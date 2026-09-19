@@ -16,7 +16,7 @@ class FocusTrap extends St.Widget {
     }
 });
 
-function getTermsForSearchString(searchString) {
+export function getTermsForSearchString(searchString) {
     searchString = searchString.replace(/^\s+/g, '').replace(/\s+$/g, '');
     if (searchString === '')
         return [];

@@ -78,6 +78,7 @@
     <file>ui/dnd.js</file>
     <file>ui/dock/dockManager.js</file>
     <file>ui/dock/docklet.js</file>
+    <file>ui/dock/launcher.js</file>
     <file>ui/dock/appDocklet.js</file>
     <file>ui/dock/docklets/clock.js</file>
     <file>ui/endSessionDialog.js</file>

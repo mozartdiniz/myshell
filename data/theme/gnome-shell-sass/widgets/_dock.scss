@@ -31,3 +31,20 @@ $dock_tile_size: 64px;
 .clock-docklet {
   background-color: #2b2b2b;
 }
+
+/* Launcher (Super) */
+.launcher-dialog {
+  .modal-dialog-content-box {
+    width: 640px;
+    max-height: 600px;
+    spacing: $base_padding * 2;
+  }
+}
+
+.launcher-entry {
+  width: 100%;
+}
+
+.launcher-results {
+  min-height: 200px;
+}

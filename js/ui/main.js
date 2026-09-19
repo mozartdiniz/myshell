@@ -24,6 +24,7 @@ import * as OsdWindow from './osdWindow.js';
 import * as OsdMonitorLabeler from './osdMonitorLabeler.js';
 import * as Overview from './overview.js';
 import * as Dock from './dock/dockManager.js';
+import * as Launcher from './dock/launcher.js';
 import * as InputSourceManager from './status/keyboard.js';
 import * as PadOsd from './padOsd.js';
 import * as Panel from './panel.js';
@@ -61,6 +62,7 @@ export let componentManager = null;
 export let extensionManager = null;
 export let panel = null;
 export let dock = null;
+export let launcher = null;
 export let overview = null;
 export let runDialog = null;
 export let lookingGlass = null;
@@ -284,9 +286,18 @@ async function _initializeUI() {
     overview.init();
 
     // WindowMaker-style docks replace the top panel
-    layoutManager.panelBox.hide();
+    // Untrack the panel so it neither shows nor reserves a strut, but
+    // keep it in the stage: panel code still queries its theme node.
     layoutManager.removeChrome(layoutManager.panelBox);
+    layoutManager.uiGroup.add_child(layoutManager.panelBox);
+    layoutManager.panelBox.hide();
     dock = new Dock.DockManager();
+    launcher = new Launcher.Launcher();
+    global.display.connectObject('overlay-key', () => {
+        if (sessionMode.isLocked || sessionMode.isGreeter)
+            return;
+        launcher.toggle();
+    });
     // Normally kicked off by the panel's keyboard indicator
     InputSourceManager.getInputSourceManager().reload();
 

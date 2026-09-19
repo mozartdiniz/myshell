@@ -89,6 +89,7 @@ class SearchResult extends St.Button {
                 St.ClipboardType.CLIPBOARD, this.metaInfo.clipboardText);
         }
         Main.overview.toggle();
+        Main.launcher?.close();
     }
 });
 
@@ -326,6 +327,7 @@ class ListSearchResults extends SearchResultsBase {
             this.providerInfo.animateLaunch();
             provider.launchSearch(this._terms);
             Main.overview.toggle();
+            Main.launcher?.close();
         });
 
         this._container.add_child(this.providerInfo);
