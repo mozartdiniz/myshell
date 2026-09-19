@@ -29,7 +29,7 @@ export const Docklet = GObject.registerClass({
             ...params,
         });
 
-        /** @type {{corner: string, index: number}|null} */
+        /** @type {{edge: string, slot: number, depth: number}|null} */
         this.placement = null;
 
         this._tickId = 0;
@@ -106,8 +106,13 @@ export const Docklet = GObject.registerClass({
         this.emit('drag-end', this.x, this.y);
     }
 
-    /** Side a popup menu should open towards, based on corner. */
+    /** Side of the tile a popup menu's arrow should sit on. */
     get menuSide() {
-        return this.placement?.corner.endsWith('right') ? St.Side.RIGHT : St.Side.LEFT;
+        switch (this.placement?.edge) {
+        case 'right': return St.Side.RIGHT;
+        case 'top': return St.Side.TOP;
+        case 'bottom': return St.Side.BOTTOM;
+        default: return St.Side.LEFT;
+        }
     }
 });

@@ -9,30 +9,32 @@ import {AppDocklet} from './appDocklet.js';
 import {ClockDocklet} from './docklets/clock.js';
 import {TILE_SIZE} from './docklet.js';
 
-export const CORNERS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+export const EDGES = ['left', 'right', 'top', 'bottom'];
 
-const DEFAULT_APP_CORNER = 'top-right';
+const DEFAULT_APP_EDGE = 'right';
 const SNAP_TIME = 150;
+const MAX_DEPTH = 4;
 
 /**
  * Owns all free-floating tiles. Each tile is an independent chrome
- * actor docked to one of the four screen corners. Tiles in a corner
- * form a packed stack that grows along the vertical edge away from
- * the corner, wrapping into a new column when the edge is full.
- * Dropping a tile anywhere docks it into the nearest corner's stack
- * at the index closest to the drop point. Layout is persisted to
+ * actor magnetically docked to the nearest screen edge, keeping the
+ * position along that edge where it was dropped (snapped to a
+ * TILE_SIZE grid so tiles line up). Occupied slots push the tile to
+ * the closest free one. Layout is persisted to
  * $XDG_CONFIG_HOME/myshell/tiles.json.
+ *
+ * A placement is {edge, slot, depth}: `slot` counts tiles along the
+ * edge from the top/left, `depth` counts tiles away from the edge.
  */
 export class DockManager {
     constructor() {
         /** @type {Map<string, import('./docklet.js').Docklet>} */
         this._tiles = new Map();
-        /** @type {Map<string, import('./docklet.js').Docklet[]>} */
-        this._stacks = new Map(CORNERS.map(c => [c, []]));
 
         this._stateFile = Gio.File.new_for_path(GLib.build_filenamev(
             [GLib.get_user_config_dir(), 'myshell', 'tiles.json']));
-        this._saved = this._loadState();
+        /** id → placement; authoritative layout, survives tile destruction */
+        this._layout = this._loadState();
         this._saveId = 0;
 
         this._favorites = AppFavorites.getAppFavorites();
@@ -57,7 +59,7 @@ export class DockManager {
             return;
         }
         this._populated = true;
-        this._addTile(new ClockDocklet(), 'top-left');
+        this._addTile(new ClockDocklet(), {edge: 'left', slot: 0, depth: 0});
         this._syncFavorites();
     }
 
@@ -67,124 +69,149 @@ export class DockManager {
         return Main.layoutManager.primaryMonitor;
     }
 
-    _rowsPerColumn() {
-        return Math.max(1, Math.floor(this._monitor().height / TILE_SIZE));
-    }
-
-    /** Screen position of stack slot `index` in `corner`. */
-    _slotPosition(corner, index) {
+    _slotsAlong(edge) {
         const m = this._monitor();
-        const rows = this._rowsPerColumn();
-        const col = Math.floor(index / rows);
-        const row = index % rows;
-        const x = corner.endsWith('left')
-            ? m.x + col * TILE_SIZE
-            : m.x + m.width - (col + 1) * TILE_SIZE;
-        const y = corner.startsWith('top')
-            ? m.y + row * TILE_SIZE
-            : m.y + m.height - (row + 1) * TILE_SIZE;
-        return [x, y];
+        const len = edge === 'left' || edge === 'right' ? m.height : m.width;
+        return Math.max(1, Math.floor(len / TILE_SIZE));
     }
 
-    /** Nearest corner and stack index for a tile dropped at x,y. */
-    _dropTarget(x, y) {
+    /** Screen position for a placement. */
+    _placementToPosition({edge, slot, depth}) {
         const m = this._monitor();
-        const cx = x + TILE_SIZE / 2, cy = y + TILE_SIZE / 2;
-        const left = cx - m.x < m.width / 2;
-        const top = cy - m.y < m.height / 2;
-        const corner = `${top ? 'top' : 'bottom'}-${left ? 'left' : 'right'}`;
-
-        const rows = this._rowsPerColumn();
-        const dx = left ? x - m.x : m.x + m.width - (x + TILE_SIZE);
-        const dy = top ? y - m.y : m.y + m.height - (y + TILE_SIZE);
-        const col = Math.max(0, Math.round(dx / TILE_SIZE));
-        const row = Math.max(0, Math.min(rows - 1, Math.round(dy / TILE_SIZE)));
-        return {corner, index: col * rows + row};
+        const along = slot * TILE_SIZE;
+        const away = depth * TILE_SIZE;
+        switch (edge) {
+        case 'left':
+            return [m.x + away, m.y + along];
+        case 'right':
+            return [m.x + m.width - TILE_SIZE - away, m.y + along];
+        case 'top':
+            return [m.x + along, m.y + away];
+        case 'bottom':
+        default:
+            return [m.x + along, m.y + m.height - TILE_SIZE - away];
+        }
     }
 
-    // ---- stacks -----------------------------------------------------
-
-    _stackOf(tile) {
-        return tile.placement ? this._stacks.get(tile.placement.corner) : null;
+    /** Nearest edge and grid placement for a tile whose top-left is x,y. */
+    _positionToPlacement(x, y) {
+        const m = this._monitor();
+        const dist = {
+            left: x - m.x,
+            right: m.x + m.width - (x + TILE_SIZE),
+            top: y - m.y,
+            bottom: m.y + m.height - (y + TILE_SIZE),
+        };
+        const edge = EDGES.reduce((a, b) => dist[a] <= dist[b] ? a : b);
+        const along = edge === 'left' || edge === 'right' ? y - m.y : x - m.x;
+        // Always magnetize onto the surface; depth > 0 only arises
+        // when the slot on the edge is already taken.
+        return {
+            edge,
+            slot: this._clampSlot(edge, Math.round(along / TILE_SIZE)),
+            depth: 0,
+        };
     }
 
-    _detach(tile) {
-        const stack = this._stackOf(tile);
-        if (!stack)
-            return;
-        const i = stack.indexOf(tile);
-        if (i >= 0)
-            stack.splice(i, 1);
-        tile.placement = null;
+    _clampSlot(edge, slot) {
+        return Math.max(0, Math.min(this._slotsAlong(edge) - 1, slot));
     }
 
-    _insert(tile, corner, index) {
-        const stack = this._stacks.get(corner);
-        index = Math.max(0, Math.min(stack.length, index));
-        stack.splice(index, 0, tile);
-        tile.placement = {corner, index};
+    _isFree(placement, except = null) {
+        const [x, y] = this._placementToPosition(placement);
+        for (const tile of this._tiles.values()) {
+            if (tile === except || !tile.placement)
+                continue;
+            const [tx, ty] = this._placementToPosition(tile.placement);
+            if (Math.abs(tx - x) < TILE_SIZE && Math.abs(ty - y) < TILE_SIZE)
+                return false;
+        }
+        return true;
     }
 
-    _layoutStack(corner, animate = false) {
-        const stack = this._stacks.get(corner);
-        stack.forEach((tile, index) => {
-            tile.placement = {corner, index};
-            const [x, y] = this._slotPosition(corner, index);
-            if (animate) {
-                tile.ease({
-                    x, y,
-                    duration: SNAP_TIME,
-                    mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-                });
-            } else {
-                tile.set_position(x, y);
+    /**
+     * Closest free placement to `wanted` on the same edge: first try
+     * sliding along the edge, then stepping further away from it.
+     */
+    _nearestFree(wanted, except = null) {
+        const {edge} = wanted;
+        const slots = this._slotsAlong(edge);
+        let best = null, bestCost = Infinity;
+        for (let depth = 0; depth <= MAX_DEPTH; depth++) {
+            for (let slot = 0; slot < slots; slot++) {
+                // Prefer sliding along the surface over leaving it
+                const cost = Math.abs(slot - wanted.slot) +
+                    Math.abs(depth - wanted.depth) * slots;
+                if (cost >= bestCost)
+                    continue;
+                const p = {edge, slot, depth};
+                if (this._isFree(p, except)) {
+                    best = p;
+                    bestCost = cost;
+                }
             }
-        });
+        }
+        return best;
     }
 
-    _relayoutAll(animate = false) {
-        for (const corner of CORNERS)
-            this._layoutStack(corner, animate);
+    _place(tile, placement, animate = false) {
+        tile.placement = placement;
+        this._layout.set(tile.id, placement);
+        const [x, y] = this._placementToPosition(placement);
+        if (animate) {
+            tile.ease({
+                x, y,
+                duration: SNAP_TIME,
+                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            });
+        } else {
+            tile.set_position(x, y);
+        }
+    }
+
+    _relayoutAll() {
+        for (const tile of this._tiles.values()) {
+            if (!tile.placement)
+                continue;
+            const p = {...tile.placement};
+            p.slot = this._clampSlot(p.edge, p.slot);
+            this._place(tile, this._nearestFree(p, tile) ?? p);
+        }
     }
 
     // ---- tiles ------------------------------------------------------
 
-    _addTile(tile, fallbackCorner) {
-        const saved = this._saved.get(tile.id);
-        const corner = saved?.corner ?? fallbackCorner;
-        const index = saved?.index ?? Number.MAX_SAFE_INTEGER;
-
+    _addTile(tile, fallback) {
+        const wanted = this._layout.get(tile.id) ?? fallback;
         Main.layoutManager.addChrome(tile, {
             affectsStruts: false,
             trackFullscreen: true,
         });
         this._tiles.set(tile.id, tile);
-        this._insert(tile, corner, index);
-        this._layoutStack(corner);
+        this._place(tile, this._nearestFree(wanted, tile) ?? wanted);
 
         tile.connect('drag-end', (t, x, y) => this._onTileDropped(t, x, y));
-        tile.connect('destroy', () => this._removeTile(tile));
+        tile.connect('destroy', () => this._tiles.delete(tile.id));
         this._queueSave();
     }
 
-    _removeTile(tile) {
-        const corner = tile.placement?.corner;
-        this._detach(tile);
-        this._tiles.delete(tile.id);
-        if (corner)
-            this._layoutStack(corner, true);
+    /** Remove a tile and forget its placement. */
+    _forgetTile(tile) {
+        this._layout.delete(tile.id);
+        tile.destroy();
         this._queueSave();
     }
 
     _onTileDropped(tile, x, y) {
-        const from = tile.placement.corner;
-        const {corner, index} = this._dropTarget(x, y);
-        this._detach(tile);
-        this._insert(tile, corner, index);
-        if (from !== corner)
-            this._layoutStack(from, true);
-        this._layoutStack(corner, true);
+        const wanted = this._positionToPlacement(x, y);
+        this._place(tile, this._nearestFree(wanted, tile) ?? tile.placement, true);
         this._queueSave();
+    }
+
+    /** First free slot along `edge`, nearest the top/left. */
+    _firstFree(edge) {
+        return this._nearestFree({edge, slot: 0, depth: 0}) ??
+            {edge, slot: 0, depth: 0};
     }
 
     _syncFavorites() {
@@ -194,7 +221,7 @@ export class DockManager {
 
         for (const tile of [...this._tiles.values()]) {
             if (tile instanceof AppDocklet && !wanted.has(tile.app.get_id()))
-                tile.destroy();
+                this._forgetTile(tile);
         }
 
         const appSystem = Shell.AppSystem.get_default();
@@ -203,7 +230,7 @@ export class DockManager {
                 continue;
             const app = appSystem.lookup_app(appId);
             if (app)
-                this._addTile(new AppDocklet(app), DEFAULT_APP_CORNER);
+                this._addTile(new AppDocklet(app), this._firstFree(DEFAULT_APP_EDGE));
         }
     }
 
@@ -214,9 +241,9 @@ export class DockManager {
         try {
             const [, bytes] = this._stateFile.load_contents(null);
             const list = JSON.parse(new TextDecoder().decode(bytes));
-            for (const {id, corner, index} of list) {
-                if (CORNERS.includes(corner))
-                    map.set(id, {corner, index: index | 0});
+            for (const {id, edge, slot, depth} of list) {
+                if (EDGES.includes(edge))
+                    map.set(id, {edge, slot: slot | 0, depth: depth | 0});
             }
         } catch (e) {
             if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND))
@@ -236,15 +263,7 @@ export class DockManager {
     }
 
     _save() {
-        const list = [];
-        for (const tile of this._tiles.values()) {
-            if (tile.placement)
-                list.push({id: tile.id, ...tile.placement});
-        }
-        for (const [id, p] of this._saved) {
-            if (!this._tiles.has(id))
-                list.push({id, ...p}); // keep layout of tiles not currently present
-        }
+        const list = [...this._layout].map(([id, p]) => ({id, ...p}));
         try {
             const dir = this._stateFile.get_parent();
             if (!dir.query_exists(null))
