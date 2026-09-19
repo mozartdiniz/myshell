@@ -79,7 +79,7 @@ const _modes = {
     },
 
     'user': {
-        hasOverview: true,
+        hasOverview: false,
         showCalendarEvents: true,
         showWelcomeDialog: true,
         allowSettings: true,
@@ -94,9 +94,9 @@ const _modes = {
         unlockDialog: UnlockDialog,
         components: USER_SESSION_COMPONENTS,
         panel: {
-            left: ['activities'],
-            center: ['dateMenu'],
-            right: ['screenRecording', 'screenSharing', 'dwellClick', 'a11y', 'keyboard', 'quickSettings'],
+            left: [],
+            center: [],
+            right: [],
         },
     },
 };

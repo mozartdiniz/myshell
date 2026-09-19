@@ -23,6 +23,8 @@ import * as MessageTray from './messageTray.js';
 import * as OsdWindow from './osdWindow.js';
 import * as OsdMonitorLabeler from './osdMonitorLabeler.js';
 import * as Overview from './overview.js';
+import * as Dock from './dock/dockManager.js';
+import * as InputSourceManager from './status/keyboard.js';
 import * as PadOsd from './padOsd.js';
 import * as Panel from './panel.js';
 import * as RunDialog from './runDialog.js';
@@ -58,6 +60,7 @@ const GNOMESHELL_STARTED_MESSAGE_ID = 'f3ea493c22934e26811cd62abe8e203a';
 export let componentManager = null;
 export let extensionManager = null;
 export let panel = null;
+export let dock = null;
 export let overview = null;
 export let runDialog = null;
 export let lookingGlass = null;
@@ -279,6 +282,13 @@ async function _initializeUI() {
 
     layoutManager.init();
     overview.init();
+
+    // WindowMaker-style docks replace the top panel
+    layoutManager.panelBox.hide();
+    layoutManager.removeChrome(layoutManager.panelBox);
+    dock = new Dock.DockManager();
+    // Normally kicked off by the panel's keyboard indicator
+    InputSourceManager.getInputSourceManager().reload();
 
     new PointerA11yTimeout.PointerA11yTimeout();
 

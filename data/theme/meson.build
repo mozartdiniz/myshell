@@ -15,6 +15,7 @@ theme_sources = files([
   'gnome-shell-sass/widgets/_check-box.scss',
   'gnome-shell-sass/widgets/_corner-ripple.scss',
   'gnome-shell-sass/widgets/_dash.scss',
+  'gnome-shell-sass/widgets/_dock.scss',
   'gnome-shell-sass/widgets/_dialogs.scss',
   'gnome-shell-sass/widgets/_entries.scss',
   'gnome-shell-sass/widgets/_ibus-popup.scss',
