@@ -29,7 +29,7 @@ export const Docklet = GObject.registerClass({
             ...params,
         });
 
-        /** @type {{corner: string, col: number, row: number}|null} */
+        /** @type {{corner: string, index: number}|null} */
         this.placement = null;
 
         this._tickId = 0;
@@ -81,8 +81,10 @@ export const Docklet = GObject.registerClass({
     }
 
     _onDragBegin() {
-        const {x, y} = this._panGesture.get_begin_centroid();
-        this._dragOffset = [x - this.x, y - this.y];
+        // Gesture centroids are actor-relative; use stage-space pointer
+        // coordinates so moving the actor doesn't feed back into the drag.
+        const [px, py] = global.get_pointer();
+        this._dragOffset = [px - this.x, py - this.y];
         this._grab = global.stage.grab(this);
         this.get_parent()?.set_child_above_sibling(this, null);
         this.add_style_pseudo_class('dragging');
@@ -90,9 +92,9 @@ export const Docklet = GObject.registerClass({
     }
 
     _onDragUpdate() {
-        const {x, y} = this._panGesture.get_centroid();
+        const [px, py] = global.get_pointer();
         const [dx, dy] = this._dragOffset;
-        this.set_position(Math.round(x - dx), Math.round(y - dy));
+        this.set_position(Math.round(px - dx), Math.round(py - dy));
     }
 
     _onDragEnd() {
