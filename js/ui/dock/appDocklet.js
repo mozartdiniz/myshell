@@ -55,6 +55,10 @@ class AppDocklet extends Docklet {
         this.connect('destroy', () => this._menu?.destroy());
     }
 
+    get id() {
+        return `app:${this.app.get_id()}`;
+    }
+
     _updateRunningStyle() {
         const running = this.app.state !== Shell.AppState.STOPPED;
         this._dot.visible = running;

@@ -17,6 +17,10 @@ class ClockDocklet extends Docklet {
         this.set_child(this._area);
     }
 
+    get id() {
+        return 'clock';
+    }
+
     get interval() {
         return 1000;
     }
