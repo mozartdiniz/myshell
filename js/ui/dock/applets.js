@@ -2,6 +2,7 @@ import {BatteryDocklet} from './docklets/battery.js';
 import {ClockDocklet} from './docklets/clock.js';
 import {CpuDocklet} from './docklets/cpu.js';
 import {DateDocklet} from './docklets/date.js';
+import {FolderDocklet} from './docklets/folder.js';
 import {MemoryDocklet} from './docklets/memory.js';
 import {NetworkDocklet} from './docklets/network.js';
 import {SystemDocklet} from './docklets/system.js';
@@ -11,7 +12,9 @@ import {WorkspacesDocklet} from './docklets/workspaces.js';
 
 /**
  * Applets the user can add from the launcher. `id` is also the tile id
- * used for layout persistence, so it must never change.
+ * used for layout persistence, so it must never change. `multiple`
+ * applets can be added any number of times; each instance gets the id
+ * `<id>:<n>`.
  */
 export const APPLETS = [
     {
@@ -78,6 +81,14 @@ export const APPLETS = [
         type: WorkspacesDocklet,
     },
     {
+        id: 'folder',
+        name: _('Folder'),
+        description: _('Opens a folder; click to add another'),
+        icon: 'folder-symbolic',
+        type: FolderDocklet,
+        multiple: true,
+    },
+    {
         id: 'trash',
         name: _('Trash'),
         description: _('Open or empty the trash'),
@@ -85,6 +96,18 @@ export const APPLETS = [
         type: TrashDocklet,
     },
 ];
+
+/**
+ * @param {string} id - applet id, or instance id for `multiple` applets
+ * @returns {object|null} the APPLETS entry it belongs to
+ */
+export function appletInfo(id) {
+    const [type, instance] = id.split(':');
+    const info = APPLETS.find(a => a.id === type);
+    if (!info || !!info.multiple !== (instance !== undefined))
+        return null;
+    return info;
+}
 
 /** Applets shown on first start. */
 export const DEFAULT_APPLETS = ['system', 'clock'];

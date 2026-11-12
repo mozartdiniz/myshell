@@ -7,7 +7,7 @@ import * as AppFavorites from '../appFavorites.js';
 import * as Main from '../main.js';
 import * as Signals from '../../misc/signals.js';
 import {AppDocklet} from './appDocklet.js';
-import {APPLETS, DEFAULT_APPLETS} from './applets.js';
+import {APPLETS, DEFAULT_APPLETS, appletInfo} from './applets.js';
 import {TILE_SIZE} from './docklet.js';
 
 export const EDGES = ['left', 'right', 'top', 'bottom'];
@@ -261,8 +261,24 @@ export class DockManager extends Signals.EventEmitter {
         return this._enabledApplets.includes(id);
     }
 
+    /** Number of shown instances of a `multiple` applet. */
+    appletCount(type) {
+        return this._enabledApplets.filter(id => id.startsWith(`${type}:`)).length;
+    }
+
+    /** Show another instance of a `multiple` applet. */
+    addAppletInstance(type) {
+        if (!APPLETS.find(a => a.id === type)?.multiple)
+            return;
+        let n = 1;
+        while (this.isAppletEnabled(`${type}:${n}`))
+            n++;
+        this.setAppletEnabled(`${type}:${n}`, true);
+    }
+
     setAppletEnabled(id, enabled) {
-        if (enabled === this.isAppletEnabled(id) || !APPLETS.some(a => a.id === id))
+        const info = appletInfo(id);
+        if (enabled === this.isAppletEnabled(id) || !info)
             return;
 
         if (enabled) {
@@ -271,6 +287,9 @@ export class DockManager extends Signals.EventEmitter {
                 this._addApplet(id);
         } else {
             this._enabledApplets = this._enabledApplets.filter(a => a !== id);
+            // An instance id may be reused by the next one added
+            if (info.multiple)
+                delete this._appletSettings[id];
             const tile = this._tiles.get(id);
             if (tile)
                 this._forgetTile(tile);
@@ -280,7 +299,7 @@ export class DockManager extends Signals.EventEmitter {
     }
 
     _addApplet(id) {
-        const info = APPLETS.find(a => a.id === id);
+        const info = appletInfo(id);
         if (!info || this._tiles.has(id))
             return;
         let tile;
@@ -307,7 +326,7 @@ export class DockManager extends Signals.EventEmitter {
             const [, bytes] = this._appletsFile.load_contents(null);
             const state = JSON.parse(new TextDecoder().decode(bytes));
             if (Array.isArray(state.enabled))
-                this._enabledApplets = state.enabled.filter(id => APPLETS.some(a => a.id === id));
+                this._enabledApplets = state.enabled.filter(id => appletInfo(id));
             if (state.settings && typeof state.settings === 'object')
                 this._appletSettings = state.settings;
         } catch (e) {

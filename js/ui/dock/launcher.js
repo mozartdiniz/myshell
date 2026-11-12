@@ -42,7 +42,10 @@ class LauncherAppTile extends St.Button {
     }
 });
 
-/** Row in the Applets page; click adds or removes the applet. */
+/**
+ * Row in the Applets page; click adds or removes the applet, or adds
+ * another instance of a `multiple` one.
+ */
 const LauncherAppletRow = GObject.registerClass(
 class LauncherAppletRow extends St.Button {
     _init(info) {
@@ -77,9 +80,16 @@ class LauncherAppletRow extends St.Button {
         }));
         box.add_child(text);
 
+        if (info.multiple) {
+            this._count = new St.Label({
+                style_class: 'launcher-applet-count',
+                y_align: Clutter.ActorAlign.CENTER,
+            });
+            box.add_child(this._count);
+        }
         this._check = new St.Icon({
             style_class: 'launcher-applet-check',
-            icon_name: 'object-select-symbolic',
+            icon_name: info.multiple ? 'list-add-symbolic' : 'object-select-symbolic',
             y_align: Clutter.ActorAlign.CENTER,
         });
         box.add_child(this._check);
@@ -88,6 +98,15 @@ class LauncherAppletRow extends St.Button {
     }
 
     sync() {
+        if (this.info.multiple) {
+            const count = Main.dock.appletCount(this.info.id);
+            const shown = ngettext('%d shown', '%d shown', count).format(count);
+            this._count.text = count ? shown : '';
+            this.accessible_name = count
+                ? `${this.info.name}, ${shown}` : this.info.name;
+            return;
+        }
+
         const enabled = Main.dock.isAppletEnabled(this.info.id);
         this._check.opacity = enabled ? 255 : 0;
         if (enabled)
@@ -225,8 +244,12 @@ export class Launcher extends ModalDialog.ModalDialog {
         this.contentLayout.add_child(this._appletScroll);
         for (const info of APPLETS) {
             const row = new LauncherAppletRow(info);
-            row.connect('clicked', () => Main.dock.setAppletEnabled(
-                info.id, !Main.dock.isAppletEnabled(info.id)));
+            row.connect('clicked', () => {
+                if (info.multiple)
+                    Main.dock.addAppletInstance(info.id);
+                else
+                    Main.dock.setAppletEnabled(info.id, !Main.dock.isAppletEnabled(info.id));
+            });
             row.connect('key-focus-in',
                 () => ensureActorVisibleInScrollView(this._appletScroll, row));
             this._appletList.add_child(row);
