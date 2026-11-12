@@ -596,11 +596,13 @@ export class Panel extends St.Widget {
     }
 
     _toggleMenu(indicator) {
-        if (!indicator || !indicator.mapped)
+        // The menu may have been moved to a dock applet
+        const source = indicator?.menu?.sourceActor;
+        if (!source || !source.mapped)
             return; // menu not supported by current session mode
 
         const menu = indicator.menu;
-        if (!indicator.reactive)
+        if (!source.reactive)
             return;
 
         menu.toggle();
@@ -609,10 +611,11 @@ export class Panel extends St.Widget {
     }
 
     _closeMenu(indicator) {
-        if (!indicator || !indicator.mapped)
+        const source = indicator?.menu?.sourceActor;
+        if (!source || !source.mapped)
             return; // menu not supported by current session mode
 
-        if (!indicator.reactive)
+        if (!source.reactive)
             return;
 
         indicator.menu.close();

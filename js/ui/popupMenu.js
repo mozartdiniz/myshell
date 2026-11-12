@@ -1086,6 +1086,34 @@ export class PopupMenu extends PopupMenuBase {
         }
     }
 
+    /**
+     * Point the menu at a different actor than the one it was created
+     * for, e.g. when that one isn't shown. Keyboard handling stays with
+     * the original actor.
+     *
+     * @param {Clutter.Actor} sourceActor
+     * @param {number} arrowAlignment
+     * @param {St.Side} arrowSide
+     */
+    setSource(sourceActor, arrowAlignment, arrowSide) {
+        if (sourceActor !== this.sourceActor) {
+            this.sourceActor?.disconnectObject(this);
+            this.sourceActor = this.focusActor = sourceActor;
+            this.sourceActor.connectObject(
+                'notify::mapped', () => {
+                    if (!this.sourceActor.mapped)
+                        this.close();
+                }, this);
+        }
+
+        this._arrowAlignment = arrowAlignment;
+        if (arrowSide !== this._arrowSide) {
+            this._arrowSide = arrowSide;
+            this._boxPointer.updateArrowSide(arrowSide);
+        }
+        this._boxPointer.setPosition(this.sourceActor, arrowAlignment);
+    }
+
     setArrowOrigin(origin) {
         this._boxPointer.setArrowOrigin(origin);
     }

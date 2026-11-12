@@ -288,8 +288,11 @@ async function _initializeUI() {
     // WindowMaker-style docks replace the top panel
     // Untrack the panel so it neither shows nor reserves a strut, but
     // keep it in the stage: panel code still queries its theme node.
+    // Keep it below the panel menus, as in stock: on shutdown uiGroup
+    // destroys children in order, and the panel buttons destroy their
+    // menus, which must still be alive then.
     layoutManager.removeChrome(layoutManager.panelBox);
-    layoutManager.uiGroup.add_child(layoutManager.panelBox);
+    layoutManager.uiGroup.insert_child_below(layoutManager.panelBox, null);
     layoutManager.panelBox.hide();
     dock = new Dock.DockManager();
     launcher = new Launcher.Launcher();

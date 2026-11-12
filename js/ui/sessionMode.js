@@ -96,7 +96,9 @@ const _modes = {
         panel: {
             left: [],
             center: [],
-            right: [],
+            // The panel stays hidden; the dock's System applet shows
+            // the Quick Settings menu.
+            right: ['quickSettings'],
         },
     },
 };

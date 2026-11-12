@@ -4,6 +4,7 @@ import {CpuDocklet} from './docklets/cpu.js';
 import {DateDocklet} from './docklets/date.js';
 import {MemoryDocklet} from './docklets/memory.js';
 import {NetworkDocklet} from './docklets/network.js';
+import {SystemDocklet} from './docklets/system.js';
 import {TrashDocklet} from './docklets/trash.js';
 import {VolumeDocklet} from './docklets/volume.js';
 import {WorkspacesDocklet} from './docklets/workspaces.js';
@@ -13,6 +14,13 @@ import {WorkspacesDocklet} from './docklets/workspaces.js';
  * used for layout persistence, so it must never change.
  */
 export const APPLETS = [
+    {
+        id: 'system',
+        name: _('System'),
+        description: _('Quick settings, lock, log out and power off'),
+        icon: 'open-menu-symbolic',
+        type: SystemDocklet,
+    },
     {
         id: 'clock',
         name: _('Clock'),
@@ -79,4 +87,4 @@ export const APPLETS = [
 ];
 
 /** Applets shown on first start. */
-export const DEFAULT_APPLETS = ['clock'];
+export const DEFAULT_APPLETS = ['system', 'clock'];

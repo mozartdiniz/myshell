@@ -62,6 +62,11 @@ $dock_bevel_dark: #151515;
   margin-top: 3px;
 }
 
+.system-docklet:checked {
+  background-color: #1e1e1e;
+  border-color: $dock_bevel_dark $dock_bevel_light $dock_bevel_light $dock_bevel_dark;
+}
+
 .applet-badge {
   font-size: 7pt;
   font-weight: bold;

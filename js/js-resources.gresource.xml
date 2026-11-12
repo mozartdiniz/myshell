@@ -89,6 +89,7 @@
     <file>ui/dock/docklets/memory.js</file>
     <file>ui/dock/docklets/meter.js</file>
     <file>ui/dock/docklets/network.js</file>
+    <file>ui/dock/docklets/system.js</file>
     <file>ui/dock/docklets/trash.js</file>
     <file>ui/dock/docklets/volume.js</file>
     <file>ui/dock/docklets/workspaces.js</file>
