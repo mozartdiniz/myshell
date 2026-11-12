@@ -49,6 +49,26 @@ $dock_tile_size: 64px;
   min-height: 200px;
 }
 
+.launcher-apps {
+  height: 440px;
+}
+
+.launcher-app {
+  width: 104px;
+  padding: $base_padding * 1.5 $base_padding;
+  border-radius: $base_border_radius;
+  spacing: $base_padding;
+
+  &:hover { background-color: transparentize($fg_color, 0.9); }
+  &:focus { background-color: transparentize($fg_color, 0.85); }
+  &:active { background-color: transparentize($fg_color, 0.8); }
+}
+
+.launcher-app-label {
+  padding-top: $base_padding;
+  @extend %caption;
+}
+
 .docklet:dragging {
   opacity: 0.85;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);

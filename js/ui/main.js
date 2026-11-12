@@ -298,6 +298,12 @@ async function _initializeUI() {
             return;
         launcher.toggle();
     });
+    // The dummy overview doesn't bind Super+A; show the launcher instead
+    wm.addKeybinding('toggle-application-view',
+        new Gio.Settings({schema_id: WindowManager.SHELL_KEYBINDINGS_SCHEMA}),
+        Meta.KeyBindingFlags.IGNORE_AUTOREPEAT,
+        Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+        () => launcher.toggle());
     // Normally kicked off by the panel's keyboard indicator
     InputSourceManager.getInputSourceManager().reload();
 
