@@ -39,7 +39,9 @@ export class DockManager {
 
         this._favorites = AppFavorites.getAppFavorites();
         this._favorites.connectObject('changed',
-            () => this._syncFavorites(), this);
+            () => this._syncAppTiles(), this);
+        Shell.AppSystem.get_default().connectObject('app-state-changed',
+            () => this._syncAppTiles(), this);
 
         this._populated = false;
         Main.layoutManager.connectObject('monitors-changed',
@@ -60,7 +62,7 @@ export class DockManager {
         }
         this._populated = true;
         this._addTile(new ClockDocklet(), {edge: 'left', slot: 0, depth: 0});
-        this._syncFavorites();
+        this._syncAppTiles();
     }
 
     // ---- geometry ---------------------------------------------------
@@ -214,22 +216,28 @@ export class DockManager {
             {edge, slot: 0, depth: 0};
     }
 
-    _syncFavorites() {
+    /**
+     * Pinned (favorite) apps always have a tile; any other running app
+     * gets a temporary one that goes away when it quits, so it can be
+     * pinned from its menu.
+     */
+    _syncAppTiles() {
         if (!this._populated)
             return;
-        const wanted = new Set(this._favorites.getFavorites().map(a => a.get_id()));
+        const appSystem = Shell.AppSystem.get_default();
+        const wanted = new Map();
+        for (const app of this._favorites.getFavorites())
+            wanted.set(app.get_id(), app);
+        for (const app of appSystem.get_running())
+            wanted.set(app.get_id(), app);
 
         for (const tile of [...this._tiles.values()]) {
             if (tile instanceof AppDocklet && !wanted.has(tile.app.get_id()))
                 this._forgetTile(tile);
         }
 
-        const appSystem = Shell.AppSystem.get_default();
-        for (const appId of wanted) {
-            if (this._tiles.has(`app:${appId}`))
-                continue;
-            const app = appSystem.lookup_app(appId);
-            if (app)
+        for (const [appId, app] of wanted) {
+            if (!this._tiles.has(`app:${appId}`))
                 this._addTile(new AppDocklet(app), this._firstFree(DEFAULT_APP_EDGE));
         }
     }

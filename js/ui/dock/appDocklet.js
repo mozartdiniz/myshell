@@ -36,8 +36,11 @@ class AppDocklet extends Docklet {
 
         this._dot = new St.Widget({
             style_class: 'docklet-running-dot',
-            x_align: Clutter.ActorAlign.START,
-            y_align: Clutter.ActorAlign.END,
+            // BinLayout only honors child alignment for expanding children
+            x_expand: true,
+            y_expand: true,
+            x_align: Clutter.ActorAlign.END,
+            y_align: Clutter.ActorAlign.START,
         });
         this._box.add_child(this._dot);
 
@@ -85,10 +88,26 @@ class AppDocklet extends Docklet {
         if (this.app.state === Shell.AppState.STOPPED || openNew)
             this._animateLaunch();
 
-        if (openNew)
+        if (openNew) {
             this.app.open_new_window(-1);
-        else
-            this.app.activate();
+            return;
+        }
+
+        // Clicking the focused app hides all its windows; clicking it
+        // again brings them all back where they were.
+        const windows = this._windows();
+        const focused = Shell.WindowTracker.get_default().focus_app === this.app;
+        if (focused && windows.some(w => !w.minimized)) {
+            windows.forEach(w => w.minimize());
+            return;
+        }
+
+        windows.forEach(w => w.unminimize());
+        this.app.activate();
+    }
+
+    _windows() {
+        return this.app.get_windows().filter(w => !w.skip_taskbar);
     }
 
     _animateLaunch() {

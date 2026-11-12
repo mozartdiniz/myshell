@@ -158,7 +158,7 @@ export class AppMenu extends PopupMenu.PopupMenu {
         const {id} = this._app;
         this._toggleFavoriteItem.label.text = this._appFavorites.isFavorite(id)
             ? _('Unpin')
-            : _('Pin to Dash');
+            : _('Pin to Dock');
     }
 
     _updateGpuItem() {
