@@ -25,6 +25,7 @@ import * as OsdMonitorLabeler from './osdMonitorLabeler.js';
 import * as Overview from './overview.js';
 import * as Dock from './dock/dockManager.js';
 import * as Launcher from './dock/launcher.js';
+import * as RootMenu from './dock/rootMenu.js';
 import * as InputSourceManager from './status/keyboard.js';
 import * as PadOsd from './padOsd.js';
 import * as Panel from './panel.js';
@@ -62,6 +63,7 @@ export let componentManager = null;
 export let extensionManager = null;
 export let panel = null;
 export let dock = null;
+export let rootMenu = null;
 export let launcher = null;
 export let overview = null;
 export let runDialog = null;
@@ -296,6 +298,7 @@ async function _initializeUI() {
     layoutManager.panelBox.hide();
     dock = new Dock.DockManager();
     launcher = new Launcher.Launcher();
+    rootMenu = new RootMenu.RootMenu();
     global.display.connectObject('overlay-key', () => {
         if (sessionMode.isLocked || sessionMode.isGreeter)
             return;

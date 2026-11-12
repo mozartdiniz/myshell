@@ -88,6 +88,62 @@ $dock_bevel_dark: #151515;
   text-align: center;
 }
 
+/* WindowMaker-style root menu (right-click on the desktop) */
+.wm-menu {
+  min-width: 170px;
+  font-family: monospace;
+  font-size: 9pt;
+  color: #d8d8d8;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.wm-menu-title {
+  padding: 3px 3px 3px 6px;
+  spacing: 6px;
+  color: #fff;
+  background-color: #000;
+  border: 1px solid;
+  border-color: #3a3a3a #000 #000 #3a3a3a;
+}
+
+.wm-menu-close {
+  padding: 1px;
+  background-color: #2b2b2b;
+  border: 1px solid;
+  border-color: $dock_bevel_light $dock_bevel_dark $dock_bevel_dark $dock_bevel_light;
+
+  &:hover { background-color: #3a3a3a; }
+  &:active {
+    background-color: #1e1e1e;
+    border-color: $dock_bevel_dark $dock_bevel_light $dock_bevel_light $dock_bevel_dark;
+  }
+}
+
+.wm-menu-close-icon { icon-size: 10px; }
+
+.wm-menu-item {
+  padding: 3px 4px 3px 3px;
+  spacing: 4px;
+  background-color: #2b2b2b;
+  border: 1px solid;
+  border-color: $dock_bevel_light $dock_bevel_dark $dock_bevel_dark $dock_bevel_light;
+
+  &:selected,
+  .wm-menu-pinned &:hover {
+    color: #111;
+    background-color: #d8d8d8;
+  }
+  &:insensitive { color: #6a6a6a; }
+}
+
+.wm-menu-ornament {
+  min-width: 10px;
+  font-size: 7pt;
+}
+
+.wm-menu-accel { padding-left: 16px; }
+.wm-menu-arrow { icon-size: 10px; }
+
 /* Launcher (Super) */
 .launcher-dialog {
   .modal-dialog-content-box {

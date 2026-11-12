@@ -79,6 +79,7 @@
     <file>ui/dock/dockManager.js</file>
     <file>ui/dock/docklet.js</file>
     <file>ui/dock/launcher.js</file>
+    <file>ui/dock/rootMenu.js</file>
     <file>ui/dock/appDocklet.js</file>
     <file>ui/dock/applet.js</file>
     <file>ui/dock/applets.js</file>
