@@ -1,0 +1,82 @@
+import {BatteryDocklet} from './docklets/battery.js';
+import {ClockDocklet} from './docklets/clock.js';
+import {CpuDocklet} from './docklets/cpu.js';
+import {DateDocklet} from './docklets/date.js';
+import {MemoryDocklet} from './docklets/memory.js';
+import {NetworkDocklet} from './docklets/network.js';
+import {TrashDocklet} from './docklets/trash.js';
+import {VolumeDocklet} from './docklets/volume.js';
+import {WorkspacesDocklet} from './docklets/workspaces.js';
+
+/**
+ * Applets the user can add from the launcher. `id` is also the tile id
+ * used for layout persistence, so it must never change.
+ */
+export const APPLETS = [
+    {
+        id: 'clock',
+        name: _('Clock'),
+        description: _('Analog or digital clock'),
+        icon: 'preferences-system-time-symbolic',
+        type: ClockDocklet,
+    },
+    {
+        id: 'date',
+        name: _('Date'),
+        description: _('Weekday, day and month'),
+        icon: 'x-office-calendar-symbolic',
+        type: DateDocklet,
+    },
+    {
+        id: 'cpu',
+        name: _('CPU Load'),
+        description: _('Processor usage history or per-core bars'),
+        icon: 'power-profile-performance-symbolic',
+        type: CpuDocklet,
+    },
+    {
+        id: 'memory',
+        name: _('Memory'),
+        description: _('Memory and swap usage'),
+        icon: 'drive-harddisk-solidstate-symbolic',
+        type: MemoryDocklet,
+    },
+    {
+        id: 'network',
+        name: _('Network'),
+        description: _('Download and upload speed'),
+        icon: 'network-wired-symbolic',
+        type: NetworkDocklet,
+    },
+    {
+        id: 'volume',
+        name: _('Volume'),
+        description: _('Scroll to change, click to mute'),
+        icon: 'audio-volume-high-symbolic',
+        type: VolumeDocklet,
+    },
+    {
+        id: 'battery',
+        name: _('Battery'),
+        description: _('Charge level and time remaining'),
+        icon: 'battery-good-symbolic',
+        type: BatteryDocklet,
+    },
+    {
+        id: 'workspaces',
+        name: _('Workspaces'),
+        description: _('Workspace pager with window outlines'),
+        icon: 'view-grid-symbolic',
+        type: WorkspacesDocklet,
+    },
+    {
+        id: 'trash',
+        name: _('Trash'),
+        description: _('Open or empty the trash'),
+        icon: 'user-trash-symbolic',
+        type: TrashDocklet,
+    },
+];
+
+/** Applets shown on first start. */
+export const DEFAULT_APPLETS = ['clock'];

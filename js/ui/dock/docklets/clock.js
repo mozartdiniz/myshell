@@ -1,32 +1,93 @@
+import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
-import {Docklet, TILE_SIZE} from '../docklet.js';
+import {Applet} from '../applet.js';
 
 export const ClockDocklet = GObject.registerClass(
-class ClockDocklet extends Docklet {
-    _init(params = {}) {
-        super._init({style_class: 'docklet clock-docklet', ...params});
+class ClockDocklet extends Applet {
+    _init(appletId, settings) {
+        super._init(appletId, settings, {style_class: 'clock-docklet'});
 
-        this._area = new St.DrawingArea({
-            width: TILE_SIZE,
-            height: TILE_SIZE,
+        this._interfaceSettings = new Gio.Settings({
+            schema_id: 'org.gnome.desktop.interface',
         });
+        this._interfaceSettings.connectObject('changed::clock-format',
+            () => this.tick(), this);
+
+        this._area = new St.DrawingArea({x_expand: true, y_expand: true});
         this._area.connect('repaint', a => this._repaint(a));
-        this.set_child(this._area);
+
+        this._digital = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this._timeLabel = new St.Label({
+            style_class: 'applet-clock-time',
+            x_align: Clutter.ActorAlign.CENTER,
+        });
+        this._subLabel = new St.Label({
+            style_class: 'applet-small',
+            x_align: Clutter.ActorAlign.CENTER,
+        });
+        this._digital.add_child(this._timeLabel);
+        this._digital.add_child(this._subLabel);
+
+        this.connect('destroy', () => {
+            this._area.destroy();
+            this._digital.destroy();
+        });
+        this._syncStyle();
     }
 
-    get id() {
-        return 'clock';
+    get defaults() {
+        return {style: 'analog', seconds: true};
     }
 
     get interval() {
         return 1000;
     }
 
+    buildMenu(menu) {
+        this.addChoice(menu, _('Style'), 'style', [
+            ['analog', _('Analog')],
+            ['digital', _('Digital')],
+        ]);
+        this.addToggle(menu, _('Show Seconds'), 'seconds');
+        this.addAppAction(menu, _('Open Clocks'), 'org.gnome.clocks.desktop');
+    }
+
+    settingsChanged(key) {
+        if (key === 'style')
+            this._syncStyle();
+        this.tick();
+    }
+
+    _syncStyle() {
+        // set_child() unparents the other view without destroying it
+        const child = this.settings.style === 'digital' ? this._digital : this._area;
+        if (this.get_child() !== child)
+            this.set_child(child);
+    }
+
     tick() {
-        this._area.queue_repaint();
+        if (this.settings.style === 'analog') {
+            this._area.queue_repaint();
+            return;
+        }
+
+        const now = GLib.DateTime.new_now_local();
+        const twelve = this._interfaceSettings.get_string('clock-format') === '12h';
+        this._timeLabel.text = now.format(twelve ? '%l:%M' : '%H:%M').trim();
+        const parts = [];
+        if (this.settings.seconds)
+            parts.push(now.format(':%S'));
+        if (twelve)
+            parts.push(now.format('%p'));
+        this._subLabel.text = parts.join(' ') || now.format('%a');
     }
 
     _repaint(area) {
@@ -65,7 +126,8 @@ class ClockDocklet extends Docklet {
         const base = -Math.PI / 2;
         hand(base + (hour + min / 60) * Math.PI / 6, r * 0.5, 3, [0.9, 0.9, 0.9]);
         hand(base + (min + sec / 60) * Math.PI / 30, r * 0.75, 2, [0.9, 0.9, 0.9]);
-        hand(base + sec * Math.PI / 30, r * 0.85, 1, [0.9, 0.3, 0.3]);
+        if (this.settings.seconds)
+            hand(base + sec * Math.PI / 30, r * 0.85, 1, [0.9, 0.3, 0.3]);
 
         cr.$dispose();
     }

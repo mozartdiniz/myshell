@@ -5,13 +5,15 @@ import Shell from 'gi://Shell';
 
 import * as AppFavorites from '../appFavorites.js';
 import * as Main from '../main.js';
+import * as Signals from '../../misc/signals.js';
 import {AppDocklet} from './appDocklet.js';
-import {ClockDocklet} from './docklets/clock.js';
+import {APPLETS, DEFAULT_APPLETS} from './applets.js';
 import {TILE_SIZE} from './docklet.js';
 
 export const EDGES = ['left', 'right', 'top', 'bottom'];
 
 const DEFAULT_APP_EDGE = 'right';
+const DEFAULT_APPLET_EDGE = 'left';
 const SNAP_TIME = 150;
 const MAX_DEPTH = 4;
 
@@ -25,16 +27,26 @@ const MAX_DEPTH = 4;
  *
  * A placement is {edge, slot, depth}: `slot` counts tiles along the
  * edge from the top/left, `depth` counts tiles away from the edge.
+ *
+ * Applets (see applets.js) are added and removed by the user; which
+ * ones are shown and their settings live in applets.json next to the
+ * layout. Emits 'applets-changed' when the set of shown applets changes.
  */
-export class DockManager {
+export class DockManager extends Signals.EventEmitter {
     constructor() {
+        super();
+
         /** @type {Map<string, import('./docklet.js').Docklet>} */
         this._tiles = new Map();
 
-        this._stateFile = Gio.File.new_for_path(GLib.build_filenamev(
-            [GLib.get_user_config_dir(), 'myshell', 'tiles.json']));
+        const configDir = GLib.build_filenamev([GLib.get_user_config_dir(), 'myshell']);
+        this._stateFile = Gio.File.new_for_path(
+            GLib.build_filenamev([configDir, 'tiles.json']));
+        this._appletsFile = Gio.File.new_for_path(
+            GLib.build_filenamev([configDir, 'applets.json']));
         /** id → placement; authoritative layout, survives tile destruction */
         this._layout = this._loadState();
+        this._loadApplets();
         this._saveId = 0;
 
         this._favorites = AppFavorites.getAppFavorites();
@@ -61,7 +73,8 @@ export class DockManager {
             return;
         }
         this._populated = true;
-        this._addTile(new ClockDocklet(), {edge: 'left', slot: 0, depth: 0});
+        for (const id of this._enabledApplets)
+            this._addApplet(id);
         this._syncAppTiles();
     }
 
@@ -242,7 +255,66 @@ export class DockManager {
         }
     }
 
+    // ---- applets -----------------------------------------------------
+
+    isAppletEnabled(id) {
+        return this._enabledApplets.includes(id);
+    }
+
+    setAppletEnabled(id, enabled) {
+        if (enabled === this.isAppletEnabled(id) || !APPLETS.some(a => a.id === id))
+            return;
+
+        if (enabled) {
+            this._enabledApplets.push(id);
+            if (this._populated)
+                this._addApplet(id);
+        } else {
+            this._enabledApplets = this._enabledApplets.filter(a => a !== id);
+            const tile = this._tiles.get(id);
+            if (tile)
+                this._forgetTile(tile);
+        }
+        this._queueSave();
+        this.emit('applets-changed');
+    }
+
+    _addApplet(id) {
+        const info = APPLETS.find(a => a.id === id);
+        if (!info || this._tiles.has(id))
+            return;
+        let tile;
+        try {
+            tile = new info.type(id, this._appletSettings[id] ?? {});
+        } catch (e) {
+            console.error(`Failed to create applet ${id}: ${e.message}`);
+            return;
+        }
+        tile.connect('settings-changed', () => {
+            this._appletSettings[id] = {...tile.settings};
+            this._queueSave();
+        });
+        tile.connect('remove-requested', () => this.setAppletEnabled(id, false));
+        this._addTile(tile, this._firstFree(DEFAULT_APPLET_EDGE));
+    }
+
     // ---- persistence ------------------------------------------------
+
+    _loadApplets() {
+        this._enabledApplets = [...DEFAULT_APPLETS];
+        this._appletSettings = {};
+        try {
+            const [, bytes] = this._appletsFile.load_contents(null);
+            const state = JSON.parse(new TextDecoder().decode(bytes));
+            if (Array.isArray(state.enabled))
+                this._enabledApplets = state.enabled.filter(id => APPLETS.some(a => a.id === id));
+            if (state.settings && typeof state.settings === 'object')
+                this._appletSettings = state.settings;
+        } catch (e) {
+            if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND))
+                console.warn(`Failed to load applets: ${e.message}`);
+        }
+    }
 
     _loadState() {
         const map = new Map();
@@ -272,15 +344,23 @@ export class DockManager {
 
     _save() {
         const list = [...this._layout].map(([id, p]) => ({id, ...p}));
+        this._writeJson(this._stateFile, list);
+        this._writeJson(this._appletsFile, {
+            enabled: this._enabledApplets,
+            settings: this._appletSettings,
+        });
+    }
+
+    _writeJson(file, data) {
         try {
-            const dir = this._stateFile.get_parent();
+            const dir = file.get_parent();
             if (!dir.query_exists(null))
                 dir.make_directory_with_parents(null);
-            this._stateFile.replace_contents(
-                JSON.stringify(list, null, 2), null, false,
+            file.replace_contents(
+                JSON.stringify(data, null, 2), null, false,
                 Gio.FileCreateFlags.REPLACE_DESTINATION, null);
         } catch (e) {
-            console.warn(`Failed to save tile layout: ${e.message}`);
+            console.warn(`Failed to save ${file.get_basename()}: ${e.message}`);
         }
     }
 }

@@ -80,7 +80,18 @@
     <file>ui/dock/docklet.js</file>
     <file>ui/dock/launcher.js</file>
     <file>ui/dock/appDocklet.js</file>
+    <file>ui/dock/applet.js</file>
+    <file>ui/dock/applets.js</file>
+    <file>ui/dock/docklets/battery.js</file>
     <file>ui/dock/docklets/clock.js</file>
+    <file>ui/dock/docklets/cpu.js</file>
+    <file>ui/dock/docklets/date.js</file>
+    <file>ui/dock/docklets/memory.js</file>
+    <file>ui/dock/docklets/meter.js</file>
+    <file>ui/dock/docklets/network.js</file>
+    <file>ui/dock/docklets/trash.js</file>
+    <file>ui/dock/docklets/volume.js</file>
+    <file>ui/dock/docklets/workspaces.js</file>
     <file>ui/endSessionDialog.js</file>
     <file>ui/environment.js</file>
     <file>ui/extensionDownloader.js</file>
