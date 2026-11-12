@@ -7,6 +7,7 @@ import St from 'gi://St';
 
 import * as Main from '../../main.js';
 import {Applet} from '../applet.js';
+import {chooseFile} from '../portal.js';
 
 const PLACES = [
     GLib.UserDirectory.DIRECTORY_DESKTOP,
@@ -114,7 +115,10 @@ class FolderDocklet extends Applet {
 
     async _chooseFolder() {
         try {
-            const uri = await chooseFolder(_('Choose Folder'), this.settings.path);
+            const uri = await chooseFile(_('Choose Folder'), {
+                directory: true,
+                currentFolder: this.settings.path,
+            });
             if (uri)
                 this.setSetting('path', Gio.File.new_for_uri(uri).get_path());
         } catch (e) {
@@ -208,51 +212,3 @@ class FolderDocklet extends Applet {
         });
     }
 });
-
-/**
- * Ask the desktop's file chooser portal for a folder.
- *
- * @param {string} title
- * @param {string} currentFolder - path the chooser starts in
- * @returns {Promise<string|null>} URI of the chosen folder, or null if
- *   the user cancelled
- */
-function chooseFolder(title, currentFolder) {
-    const bus = Gio.DBus.session;
-    const token = `myshell_folder_${GLib.random_int()}`;
-    const sender = bus.get_unique_name().slice(1).replaceAll('.', '_');
-    const handle = `/org/freedesktop/portal/desktop/request/${sender}/${token}`;
-
-    return new Promise((resolve, reject) => {
-        // Subscribe before calling so the response can't be missed
-        const id = bus.signal_subscribe('org.freedesktop.portal.Desktop',
-            'org.freedesktop.portal.Request', 'Response', handle, null,
-            Gio.DBusSignalFlags.NONE,
-            (_conn, _sender, _path, _iface, _signal, params) => {
-                bus.signal_unsubscribe(id);
-                const [response, results] = params.recursiveUnpack();
-                // 0 = chosen, 1 = cancelled, 2 = failed
-                resolve(response === 0 ? results.uris?.[0] ?? null : null);
-            });
-
-        const options = {
-            handle_token: new GLib.Variant('s', token),
-            directory: new GLib.Variant('b', true),
-            current_folder: new GLib.Variant('ay',
-                new TextEncoder().encode(`${currentFolder}\0`)),
-        };
-        bus.call('org.freedesktop.portal.Desktop',
-            '/org/freedesktop/portal/desktop',
-            'org.freedesktop.portal.FileChooser', 'OpenFile',
-            new GLib.Variant('(ssa{sv})', ['', title, options]),
-            new GLib.VariantType('(o)'), Gio.DBusCallFlags.NONE, -1, null,
-            (conn, res) => {
-                try {
-                    conn.call_finish(res);
-                } catch (e) {
-                    bus.signal_unsubscribe(id);
-                    reject(e);
-                }
-            });
-    });
-}

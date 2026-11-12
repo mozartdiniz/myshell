@@ -13,6 +13,7 @@ import {findApp} from './applet.js';
 import {APPLETS} from './applets.js';
 
 const KEYBINDINGS_SCHEMA = 'org.gnome.desktop.wm.keybindings';
+const SHELL_KEYBINDINGS_SCHEMA = 'org.gnome.shell.keybindings';
 const WM_PREFS_SCHEMA = 'org.gnome.desktop.wm.preferences';
 const MAX_WORKSPACE_KEYBINDING = 12;
 /** Pointer travel that turns a release into a selection */
@@ -32,6 +33,8 @@ const SUBMENU_DELAY = 200;
 
 /**
  * @typedef {object} MenuDef
+ * @property {string} [id] - top-level menus: a torn-off menu with the
+ *   same id comes back instead of a second copy
  * @property {string} title
  * @property {function(): ItemDef[]} items - called on every (re)build
  */
@@ -252,7 +255,8 @@ const Menu = GObject.registerClass({
 });
 
 /**
- * WindowMaker-style root menu, opened by right-clicking the desktop.
+ * WindowMaker-style root menu, opened by right-clicking the desktop,
+ * and window list, opened by middle-clicking it.
  *
  * Open menus form a chain (root, then each cascaded submenu) shown on a
  * full-screen layer that holds a modal grab, so the manager sees every
@@ -295,20 +299,57 @@ export class RootMenu {
             'notify::n-workspaces', () => this._refreshPinned(),
             this);
         Main.dock.connectObject('applets-changed', () => this._refreshPinned(), this);
+        // Keeps a torn-off window list current
+        global.display.connectObject(
+            'restacked', () => this._refreshPinned(),
+            'notify::focus-window', () => this._refreshPinned(),
+            this);
+
+        // Hide Others keeps this app, even if the desktop took focus
+        const tracker = Shell.WindowTracker.get_default();
+        this._lastFocusApp = tracker.focus_app;
+        tracker.connectObject('notify::focus-app', () => {
+            if (tracker.focus_app)
+                this._lastFocusApp = tracker.focus_app;
+        }, this);
+
+        Main.wm.addKeybinding('open-window-list',
+            new Gio.Settings({schema_id: SHELL_KEYBINDINGS_SCHEMA}),
+            Meta.KeyBindingFlags.IGNORE_AUTOREPEAT,
+            Shell.ActionMode.NORMAL,
+            () => {
+                const [x, y] = global.get_pointer();
+                this.popupWindowList(x, y, true);
+            });
     }
 
-    /** Open the root menu with its title under the pointer at x, y. */
-    popup(x, y) {
+    /**
+     * Open the root menu with its title under the pointer at x, y.
+     *
+     * @param {number} x
+     * @param {number} y
+     * @param {boolean} [fromKeyboard] - select the first item
+     */
+    popup(x, y, fromKeyboard = false) {
+        this._popup(this._rootDef(), x, y, fromKeyboard);
+    }
+
+    /** Open the list of all windows at x, y. */
+    popupWindowList(x, y, fromKeyboard = false) {
+        this._popup(this._windowListDef(), x, y, fromKeyboard);
+    }
+
+    _popup(def, x, y, fromKeyboard) {
         if (Main.sessionMode.isLocked || Main.sessionMode.isGreeter)
             return;
         this.close();
 
-        // There is only one root menu: a torn-off one comes back
-        let menu = [...this._pinned].find(m => m.def.isRoot);
+        // There is only one of each: a torn-off one comes back
+        let menu = [...this._pinned].find(m => m.def.id === def.id);
         if (menu)
             this._unpin(menu);
         else
-            menu = this._createMenu(this._rootDef());
+            menu = this._createMenu(def);
 
         this._layer.add_child(menu);
         this._chain.push(menu);
@@ -323,6 +364,8 @@ export class RootMenu {
         this._layer.show();
         Main.uiGroup.set_child_above_sibling(this._layer, null);
         this._grab = Main.pushModal(this._layer, {actionMode: Shell.ActionMode.POPUP});
+        if (fromKeyboard)
+            menu.selectNext(1);
     }
 
     /** Close all open (not torn-off) menus. */
@@ -584,10 +627,11 @@ export class RootMenu {
     _rootDef() {
         const actions = SystemActions.getDefault();
         return {
+            id: 'root',
             title: _('MyShell'),
-            isRoot: true,
             items: () => [
                 {label: _('Workspaces'), submenu: () => this._workspacesDef()},
+                {label: _('Workspace'), submenu: () => this._workspaceDef()},
                 {label: _('Applets'), submenu: () => this._appletsDef()},
                 {
                     label: _('Display Settings'),
@@ -639,6 +683,73 @@ export class RootMenu {
                     });
                 }
                 return items;
+            },
+        };
+    }
+
+    /** Actions on the current workspace, as in WindowMaker. */
+    _workspaceDef() {
+        return {
+            title: _('Workspace'),
+            items: () => [
+                {
+                    label: _('Hide Others'),
+                    sensitive: !!this._lastFocusApp,
+                    activate: () => this._hideOthers(),
+                },
+                {label: _('Show All'), activate: () => this._showAll()},
+                {label: _('Arrange Icons'), activate: () => Main.dock.arrangeTiles()},
+            ],
+        };
+    }
+
+    /** Windows on the current workspace that can be hidden. */
+    _workspaceWindows() {
+        return global.workspace_manager.get_active_workspace().list_windows()
+            .filter(w => !w.skip_taskbar && w.can_minimize());
+    }
+
+    /** Minimize every window that isn't the focused app's. */
+    _hideOthers() {
+        const tracker = Shell.WindowTracker.get_default();
+        for (const window of this._workspaceWindows()) {
+            if (tracker.get_window_app(window) !== this._lastFocusApp)
+                window.minimize();
+        }
+    }
+
+    _showAll() {
+        for (const window of this._workspaceWindows())
+            window.unminimize();
+    }
+
+    /** Every window, by workspace, as in WindowMaker's window list. */
+    _windowListDef() {
+        return {
+            id: 'windows',
+            title: _('Windows'),
+            items: () => {
+                const windows = global.display.get_tab_list(Meta.TabList.NORMAL_ALL, null)
+                    .filter(w => !w.skip_taskbar);
+                // On every workspace comes first
+                const workspaceOf = w => w.is_on_all_workspaces()
+                    ? -1 : w.get_workspace()?.index() ?? -1;
+                windows.sort((a, b) => workspaceOf(a) - workspaceOf(b) ||
+                    a.get_stable_sequence() - b.get_stable_sequence());
+                if (!windows.length)
+                    return [{label: _('No Windows'), sensitive: false}];
+
+                const tracker = Shell.WindowTracker.get_default();
+                const focus = global.display.focus_window;
+                return windows.map(window => {
+                    const index = workspaceOf(window);
+                    return {
+                        label: window.title || tracker.get_window_app(window)?.get_name() || _('Untitled'),
+                        ornament: window === focus,
+                        accel: index < 0 ? _('All') : Meta.prefs_get_workspace_name(index),
+                        activate: () => Main.activateWindow(window),
+                    };
+                });
             },
         };
     }

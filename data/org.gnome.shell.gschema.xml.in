@@ -183,6 +183,14 @@
         Keybinding to toggle the quick settings menu.
       </description>
     </key>
+    <key name="open-window-list" type="as">
+      <default>["&lt;Super&gt;F11"]</default>
+      <summary>Keybinding to open the window list</summary>
+      <description>
+        Keybinding to open the WindowMaker-style list of all windows at
+        the pointer.
+      </description>
+    </key>
     <key name="focus-active-notification" type="as">
       <default>["&lt;Super&gt;n"]</default>
       <summary>Keybinding to focus the active notification</summary>

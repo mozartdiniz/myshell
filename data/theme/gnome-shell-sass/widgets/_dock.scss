@@ -24,6 +24,11 @@ $dock_bevel_dark: #151515;
     border-color: $dock_bevel_dark $dock_bevel_light $dock_bevel_light $dock_bevel_dark;
   }
   &:focus { box-shadow: inset 0 0 0 1px #c0c0c0; }
+  // Files dragged from an app over a tile that can open them
+  &:drop-target {
+    background-color: #4a4a4a;
+    box-shadow: inset 0 0 0 2px #e0e0e0;
+  }
 }
 
 .docklet-running-dot {
@@ -142,6 +147,7 @@ $dock_bevel_dark: #151515;
 }
 
 .wm-menu-accel { padding-left: 16px; }
+.wm-menu-label { max-width: 360px; } // long window titles ellipsize
 .wm-menu-arrow { icon-size: 10px; }
 
 /* Launcher (Super) */
@@ -230,4 +236,26 @@ $dock_bevel_dark: #151515;
 .docklet:dragging {
   opacity: 0.85;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+/* Settings of a pinned app's tile */
+.app-tile-dialog-field {
+  spacing: 4px;
+}
+
+.app-tile-dialog-label {
+  font-weight: bold;
+}
+
+.app-tile-dialog-choose {
+  min-width: 90px;
+}
+
+.app-tile-dialog-hint {
+  font-size: 9pt;
+  color: transparentize($fg_color, 0.3);
+}
+
+.app-tile-dialog-row {
+  spacing: 8px;
 }

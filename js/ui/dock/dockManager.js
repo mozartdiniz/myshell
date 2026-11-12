@@ -1,12 +1,14 @@
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 
 import * as AppFavorites from '../appFavorites.js';
+import * as DND from '../dnd.js';
 import * as Main from '../main.js';
 import * as Signals from '../../misc/signals.js';
-import {AppDocklet} from './appDocklet.js';
+import {AppDocklet, launchApp} from './appDocklet.js';
 import {APPLETS, DEFAULT_APPLETS, appletInfo} from './applets.js';
 import {TILE_SIZE} from './docklet.js';
 
@@ -16,6 +18,7 @@ const DEFAULT_APP_EDGE = 'right';
 const DEFAULT_APPLET_EDGE = 'left';
 const SNAP_TIME = 150;
 const MAX_DEPTH = 4;
+const URI_LIST = 'text/uri-list';
 
 /**
  * Owns all free-floating tiles. Each tile is an independent chrome
@@ -31,6 +34,11 @@ const MAX_DEPTH = 4;
  * Applets (see applets.js) are added and removed by the user; which
  * ones are shown and their settings live in applets.json next to the
  * layout. Emits 'applets-changed' when the set of shown applets changes.
+ * Settings of pinned app tiles live in app-tiles.json.
+ *
+ * Each edge with tiles reserves a strut as deep as its tiles reach, so
+ * maximized windows stay clear of the docks, as in WindowMaker. Files
+ * dragged from an app can be dropped on an app tile to open them.
  */
 export class DockManager extends Signals.EventEmitter {
     constructor() {
@@ -44,20 +52,43 @@ export class DockManager extends Signals.EventEmitter {
             GLib.build_filenamev([configDir, 'tiles.json']));
         this._appletsFile = Gio.File.new_for_path(
             GLib.build_filenamev([configDir, 'applets.json']));
+        this._appTilesFile = Gio.File.new_for_path(
+            GLib.build_filenamev([configDir, 'app-tiles.json']));
         /** id → placement; authoritative layout, survives tile destruction */
         this._layout = this._loadState();
         this._loadApplets();
+        /** app id → settings of its pinned tile */
+        this._appSettings = this._loadJson(this._appTilesFile) ?? {};
         this._saveId = 0;
+
+        /** edge → invisible chrome actor that reserves the strut */
+        this._struts = new Map();
+        this._strutsId = 0;
+
+        this._dropTile = null;
+        this._dropUris = null;
+        this._dragMonitor = {dragMotion: event => this._onDragMotion(event)};
+        Main.xdndHandler.connectObject(
+            'drag-begin', () => this._onClientDragBegin(),
+            'drag-end', () => this._onClientDragEnd(),
+            this);
 
         this._favorites = AppFavorites.getAppFavorites();
         this._favorites.connectObject('changed',
             () => this._syncAppTiles(), this);
+        // The favorites list leaves out apps it can't show yet (e.g.
+        // before parental controls are ready), so watch the setting
+        this._pinnedIds = this._pinnedAppIds();
+        global.settings.connectObject('changed::favorite-apps',
+            () => this._onPinnedChanged(), this);
         Shell.AppSystem.get_default().connectObject('app-state-changed',
             () => this._syncAppTiles(), this);
 
         this._populated = false;
-        Main.layoutManager.connectObject('monitors-changed',
-            () => this._onMonitorsChanged(), this);
+        Main.layoutManager.connectObject(
+            'monitors-changed', () => this._onMonitorsChanged(),
+            'startup-complete', () => this._autolaunch(),
+            this);
         this._onMonitorsChanged();
     }
 
@@ -70,6 +101,7 @@ export class DockManager extends Signals.EventEmitter {
             return;
         if (this._populated) {
             this._relayoutAll();
+            this._queueUpdateStruts();
             return;
         }
         this._populated = true;
@@ -194,6 +226,78 @@ export class DockManager extends Signals.EventEmitter {
         }
     }
 
+    _queueUpdateStruts() {
+        if (this._strutsId)
+            return;
+        this._strutsId = GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+            this._strutsId = 0;
+            this._updateStruts();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    /** Reserve each edge as deep as its tiles reach. */
+    _updateStruts() {
+        const m = this._monitor();
+        for (const edge of EDGES) {
+            const depths = this.tiles
+                .filter(t => t.placement?.edge === edge)
+                .map(t => t.placement.depth + 1);
+            const thickness = depths.length ? Math.max(...depths) * TILE_SIZE : 0;
+            let strut = this._struts.get(edge);
+            if (!thickness || !m) {
+                strut?.destroy();
+                this._struts.delete(edge);
+                continue;
+            }
+            if (!strut) {
+                strut = new Clutter.Actor({reactive: false});
+                strut.connect('destroy', () => this._struts.delete(edge));
+                Main.layoutManager.addChrome(strut, {affectsStruts: true});
+                this._struts.set(edge, strut);
+            }
+            // Spanning the whole edge tells the layout manager its side
+            switch (edge) {
+            case 'left':
+                strut.set({x: m.x, y: m.y, width: thickness, height: m.height});
+                break;
+            case 'right':
+                strut.set({x: m.x + m.width - thickness, y: m.y, width: thickness, height: m.height});
+                break;
+            case 'top':
+                strut.set({x: m.x, y: m.y, width: m.width, height: thickness});
+                break;
+            case 'bottom':
+                strut.set({x: m.x, y: m.y + m.height - thickness, width: m.width, height: thickness});
+                break;
+            }
+        }
+    }
+
+    /**
+     * Pack the tiles of each edge from its top/left end, keeping their
+     * order, like WindowMaker's Arrange Icons.
+     */
+    arrangeTiles() {
+        const byEdge = EDGES.map(edge => this.tiles
+            .filter(t => t.placement?.edge === edge)
+            .sort((a, b) => a.placement.depth - b.placement.depth ||
+                a.placement.slot - b.placement.slot));
+        // Unplaced tiles don't block the free-slot search
+        byEdge.flat().forEach(t => (t.placement = null));
+        EDGES.forEach((edge, i) => {
+            let slot = 0;
+            for (const tile of byEdge[i]) {
+                const wanted = {edge, slot, depth: 0};
+                const placement = this._nearestFree(wanted, tile) ?? wanted;
+                this._place(tile, placement, true);
+                slot = placement.slot + 1;
+            }
+        });
+        this._queueUpdateStruts();
+        this._queueSave();
+    }
+
     // ---- tiles ------------------------------------------------------
 
     _addTile(tile, fallback) {
@@ -206,7 +310,11 @@ export class DockManager extends Signals.EventEmitter {
         this._place(tile, this._nearestFree(wanted, tile) ?? wanted);
 
         tile.connect('drag-end', (t, x, y) => this._onTileDropped(t, x, y));
-        tile.connect('destroy', () => this._tiles.delete(tile.id));
+        tile.connect('destroy', () => {
+            this._tiles.delete(tile.id);
+            this._queueUpdateStruts();
+        });
+        this._queueUpdateStruts();
         this._queueSave();
     }
 
@@ -220,6 +328,7 @@ export class DockManager extends Signals.EventEmitter {
     _onTileDropped(tile, x, y) {
         const wanted = this._positionToPlacement(x, y);
         this._place(tile, this._nearestFree(wanted, tile) ?? tile.placement, true);
+        this._queueUpdateStruts();
         this._queueSave();
     }
 
@@ -250,9 +359,104 @@ export class DockManager extends Signals.EventEmitter {
         }
 
         for (const [appId, app] of wanted) {
-            if (!this._tiles.has(`app:${appId}`))
-                this._addTile(new AppDocklet(app), this._firstFree(DEFAULT_APP_EDGE));
+            if (this._tiles.has(`app:${appId}`))
+                continue;
+            const tile = new AppDocklet(app, this._appSettings[appId] ?? {});
+            tile.connect('settings-changed', () => {
+                const {command, icon, autolaunch} = tile.settings;
+                if (command || icon || autolaunch)
+                    this._appSettings[appId] = {...tile.settings};
+                else
+                    delete this._appSettings[appId];
+                this._queueSave();
+            });
+            this._addTile(tile, this._firstFree(DEFAULT_APP_EDGE));
         }
+    }
+
+    _pinnedAppIds() {
+        return new Set(global.settings.get_strv('favorite-apps'));
+    }
+
+    /** Unpinning an app forgets its tile settings. */
+    _onPinnedChanged() {
+        const pinned = this._pinnedAppIds();
+        for (const appId of this._pinnedIds) {
+            if (pinned.has(appId) || !this._appSettings[appId])
+                continue;
+            delete this._appSettings[appId];
+            this._tiles.get(`app:${appId}`)?.setSettings({});
+            this._queueSave();
+        }
+        this._pinnedIds = pinned;
+    }
+
+    /** Start the pinned apps whose tiles say so, once per session. */
+    _autolaunch() {
+        const appSystem = Shell.AppSystem.get_default();
+        for (const [appId, settings] of Object.entries(this._appSettings)) {
+            const app = appSystem.lookup_app(appId);
+            if (!settings.autolaunch || app?.state !== Shell.AppState.STOPPED)
+                continue;
+            const tile = this._tiles.get(`app:${appId}`);
+            if (tile)
+                tile.launch();
+            else
+                launchApp(app, settings);
+        }
+    }
+
+    // ---- files dropped from apps ------------------------------------
+
+    _onClientDragBegin() {
+        const selection = global.display.get_selection();
+        if (selection.get_mimetypes(Meta.SelectionType.SELECTION_DND).includes(URI_LIST))
+            DND.addDragMonitor(this._dragMonitor);
+    }
+
+    _onDragMotion({x, y, source}) {
+        if (source !== Main.xdndHandler)
+            return DND.DragMotionResult.CONTINUE;
+        const tile = this.tiles.find(t =>
+            t instanceof AppDocklet && t.acceptsFiles && contains(t, x, y));
+        this._setDropTile(tile ?? null);
+        // Read the files while the drag is on: a drop on a tile isn't
+        // a drop on a client, so the source goes away with it.
+        if (tile && !this._dropUris)
+            this._dropUris = readDraggedUris();
+        return DND.DragMotionResult.CONTINUE;
+    }
+
+    _setDropTile(tile) {
+        if (this._dropTile === tile)
+            return;
+        this._dropTile?.remove_style_pseudo_class('drop-target');
+        this._dropTile = tile;
+        tile?.add_style_pseudo_class('drop-target');
+    }
+
+    async _onClientDragEnd() {
+        DND.removeDragMonitor(this._dragMonitor);
+        const tile = this._dropTile;
+        const uris = this._dropUris;
+        this._setDropTile(null);
+        this._dropUris = null;
+        if (!tile || !uris)
+            return;
+
+        // The drag also ends on Escape; only a release is a drop
+        const type = Clutter.get_current_event()?.type();
+        const [x, y, mods] = global.get_pointer();
+        const released = type === undefined
+            ? !(mods & Clutter.ModifierType.BUTTON1_MASK)
+            : type === Clutter.EventType.BUTTON_RELEASE || type === Clutter.EventType.TOUCH_END;
+        if (!released || !contains(tile, x, y))
+            return;
+
+        const list = await uris;
+        // The tile may have gone while the files were read
+        if (list.length && this._tiles.get(tile.id) === tile)
+            tile.launch(list);
     }
 
     // ---- applets -----------------------------------------------------
@@ -335,6 +539,19 @@ export class DockManager extends Signals.EventEmitter {
         }
     }
 
+    /** @returns {object|null} the file's JSON object, or null */
+    _loadJson(file) {
+        try {
+            const [, bytes] = file.load_contents(null);
+            const data = JSON.parse(new TextDecoder().decode(bytes));
+            return data && typeof data === 'object' ? data : null;
+        } catch (e) {
+            if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND))
+                console.warn(`Failed to load ${file.get_basename()}: ${e.message}`);
+            return null;
+        }
+    }
+
     _loadState() {
         const map = new Map();
         try {
@@ -368,6 +585,7 @@ export class DockManager extends Signals.EventEmitter {
             enabled: this._enabledApplets,
             settings: this._appletSettings,
         });
+        this._writeJson(this._appTilesFile, this._appSettings);
     }
 
     _writeJson(file, data) {
@@ -382,4 +600,38 @@ export class DockManager extends Signals.EventEmitter {
             console.warn(`Failed to save ${file.get_basename()}: ${e.message}`);
         }
     }
+}
+
+/** Whether stage point x, y is inside `actor`'s on-screen box. */
+function contains(actor, x, y) {
+    const [ax, ay] = actor.get_transformed_position();
+    const [w, h] = actor.get_transformed_size();
+    return x >= ax && x < ax + w && y >= ay && y < ay + h;
+}
+
+/**
+ * Files offered by the drag in progress.
+ *
+ * @returns {Promise<string[]>} their URIs
+ */
+function readDraggedUris() {
+    const selection = global.display.get_selection();
+    const stream = Gio.MemoryOutputStream.new_resizable();
+    return new Promise(resolve => {
+        selection.transfer_async(Meta.SelectionType.SELECTION_DND, URI_LIST, -1,
+            stream, null, (_s, res) => {
+                try {
+                    selection.transfer_finish(res);
+                    if (!stream.is_closed())
+                        stream.close(null);
+                    const text = new TextDecoder().decode(stream.steal_as_bytes().toArray());
+                    // text/uri-list: one URI per line, # starts a comment
+                    resolve(text.split(/\r?\n/).map(l => l.trim())
+                        .filter(l => l && !l.startsWith('#')));
+                } catch (e) {
+                    console.warn(`Failed to read dropped files: ${e.message}`);
+                    resolve([]);
+                }
+            });
+    });
 }

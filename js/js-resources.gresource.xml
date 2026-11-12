@@ -81,6 +81,8 @@
     <file>ui/dock/launcher.js</file>
     <file>ui/dock/rootMenu.js</file>
     <file>ui/dock/appDocklet.js</file>
+    <file>ui/dock/appTileDialog.js</file>
+    <file>ui/dock/portal.js</file>
     <file>ui/dock/applet.js</file>
     <file>ui/dock/applets.js</file>
     <file>ui/dock/docklets/battery.js</file>
