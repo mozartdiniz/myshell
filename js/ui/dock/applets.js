@@ -7,6 +7,7 @@ import {FolderDocklet} from './docklets/folder.js';
 import {MemoryDocklet} from './docklets/memory.js';
 import {MusicDocklet} from './docklets/music.js';
 import {NetworkDocklet} from './docklets/network.js';
+import {NotificationsDocklet} from './docklets/notifications.js';
 import {SystemDocklet} from './docklets/system.js';
 import {TrashDocklet} from './docklets/trash.js';
 import {VolumeDocklet} from './docklets/volume.js';
@@ -61,6 +62,13 @@ export const APPLETS = [
         description: _('Your plan’s session and weekly limits'),
         icon: 'starred-symbolic',
         type: ClaudeDocklet,
+    },
+    {
+        id: 'notifications',
+        name: _('Notifications'),
+        description: _('How many notifications are waiting, and the list of them'),
+        icon: 'preferences-system-notifications-symbolic',
+        type: NotificationsDocklet,
     },
     {
         id: 'cpu',

@@ -425,3 +425,47 @@ $dock_bevel_dark: #151515;
   color: transparentize($fg_color, 0.35);
 }
 .claude-applet-status { max-width: 280px; }
+
+/* Notifications applet */
+.notifications-docklet-badge {
+  margin: 4px 4px 0 0;
+  font-size: 8pt;
+  min-width: 10px;
+  border-radius: 99px;
+  padding: 1px 5px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+.notifications-applet-scroll { max-height: 440px; }
+.notifications-applet-list {
+  width: 340px;
+  spacing: 2px;
+}
+.notifications-applet-row { spacing: 2px; }
+.notifications-applet-open {
+  padding: $base_padding $base_padding * 1.5;
+  border-radius: $base_border_radius;
+  &:hover { background-color: transparentize($fg_color, 0.9); }
+  &:focus { background-color: transparentize($fg_color, 0.85); }
+  &:active { background-color: transparentize($fg_color, 0.8); }
+}
+.notifications-applet-content { spacing: $base_padding * 1.5; }
+.notifications-applet-header { spacing: $base_padding; }
+.notifications-applet-app,
+.notifications-applet-time,
+.notifications-applet-more,
+.notifications-applet-empty {
+  @extend %caption;
+  color: transparentize($fg_color, 0.35);
+}
+.notifications-applet-title { font-weight: bold; }
+.notifications-applet-body { color: transparentize($fg_color, 0.15); }
+.notifications-applet-more { padding: $base_padding $base_padding * 1.5; }
+.notifications-applet-close {
+  padding: $base_padding * 0.75;
+  margin-top: $base_padding * 0.5;
+  border-radius: 99px;
+  & StIcon { icon-size: 12px; }
+  &:hover { background-color: transparentize($fg_color, 0.85); }
+  &:active { background-color: transparentize($fg_color, 0.75); }
+}
