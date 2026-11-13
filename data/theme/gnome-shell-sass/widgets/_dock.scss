@@ -90,6 +90,31 @@ $dock_bevel_dark: #151515;
 
 .timer-duration-entry:error { border-color: $destructive_bg_color; }
 
+.applet-color-swatch {
+  width: 30px;
+  height: 30px;
+  border-radius: 15px;
+  border: 1px solid #151515;
+  margin-bottom: 2px;
+}
+
+.applet-color-rgb {
+  font-size: 6pt;
+  font-weight: normal;
+  font-feature-settings: "tnum";
+}
+
+.color-picker-readout {
+  font-family: monospace;
+  font-size: 10pt;
+  font-weight: bold;
+  color: #e0e0e0;
+  background-color: rgba(0, 0, 0, 0.8);
+  border: 1px solid #5a5a5a;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
 .applet-folder-name {
   max-width: 58px;
   margin-top: 2px;

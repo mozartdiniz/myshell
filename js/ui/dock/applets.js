@@ -2,6 +2,7 @@ import {AgentDocklet} from './docklets/agent.js';
 import {BatteryDocklet} from './docklets/battery.js';
 import {ClaudeDocklet} from './docklets/claude.js';
 import {ClockDocklet} from './docklets/clock.js';
+import {ColorPickerDocklet} from './docklets/colorPicker.js';
 import {CpuDocklet} from './docklets/cpu.js';
 import {DateDocklet} from './docklets/date.js';
 import {FolderDocklet} from './docklets/folder.js';
@@ -86,6 +87,13 @@ export const APPLETS = [
         description: _('How many notifications are waiting, and the list of them'),
         icon: 'preferences-system-notifications-symbolic',
         type: NotificationsDocklet,
+    },
+    {
+        id: 'color-picker',
+        name: _('Color Picker'),
+        description: _('Pick a color from the screen; copies it as #RRGGBB'),
+        icon: 'color-select-symbolic',
+        type: ColorPickerDocklet,
     },
     {
         id: 'cpu',
