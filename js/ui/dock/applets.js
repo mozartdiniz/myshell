@@ -4,10 +4,12 @@ import {CpuDocklet} from './docklets/cpu.js';
 import {DateDocklet} from './docklets/date.js';
 import {FolderDocklet} from './docklets/folder.js';
 import {MemoryDocklet} from './docklets/memory.js';
+import {MusicDocklet} from './docklets/music.js';
 import {NetworkDocklet} from './docklets/network.js';
 import {SystemDocklet} from './docklets/system.js';
 import {TrashDocklet} from './docklets/trash.js';
 import {VolumeDocklet} from './docklets/volume.js';
+import {WeatherDocklet} from './docklets/weather.js';
 import {WorkspacesDocklet} from './docklets/workspaces.js';
 
 /**
@@ -37,6 +39,20 @@ export const APPLETS = [
         description: _('Weekday, day and month'),
         icon: 'x-office-calendar-symbolic',
         type: DateDocklet,
+    },
+    {
+        id: 'weather',
+        name: _('Weather'),
+        description: _('Conditions and forecast for a city'),
+        icon: 'weather-few-clouds-symbolic',
+        type: WeatherDocklet,
+    },
+    {
+        id: 'music',
+        name: _('Figaro'),
+        description: _('Figaro’s tile: play, pause, up next, show or hide its window'),
+        icon: 'audio-x-generic-symbolic',
+        type: MusicDocklet,
     },
     {
         id: 'cpu',

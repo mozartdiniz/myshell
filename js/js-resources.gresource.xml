@@ -83,6 +83,7 @@
     <file>ui/dock/appDocklet.js</file>
     <file>ui/dock/appTileDialog.js</file>
     <file>ui/dock/portal.js</file>
+    <file>ui/dock/folderFan.js</file>
     <file>ui/dock/applet.js</file>
     <file>ui/dock/applets.js</file>
     <file>ui/dock/docklets/battery.js</file>
@@ -92,10 +93,12 @@
     <file>ui/dock/docklets/folder.js</file>
     <file>ui/dock/docklets/memory.js</file>
     <file>ui/dock/docklets/meter.js</file>
+    <file>ui/dock/docklets/music.js</file>
     <file>ui/dock/docklets/network.js</file>
     <file>ui/dock/docklets/system.js</file>
     <file>ui/dock/docklets/trash.js</file>
     <file>ui/dock/docklets/volume.js</file>
+    <file>ui/dock/docklets/weather.js</file>
     <file>ui/dock/docklets/workspaces.js</file>
     <file>ui/endSessionDialog.js</file>
     <file>ui/environment.js</file>

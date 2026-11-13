@@ -7,6 +7,7 @@ import St from 'gi://St';
 
 import * as Main from '../../main.js';
 import {Applet} from '../applet.js';
+import {FolderFan} from '../folderFan.js';
 import {chooseFile} from '../portal.js';
 
 const PLACES = [
@@ -22,9 +23,10 @@ const TOOLTIP_GAP = 6;
 const TOOLTIP_FADE_TIME = 100;
 
 /**
- * A folder shortcut: click opens it in the file manager. Holding the
- * tile shows the full path; the menu picks another folder. Several can
- * be added, each with its own folder.
+ * A folder shortcut: click fans out its newest items (or opens it in
+ * the file manager, as set in the menu); middle-click always opens it.
+ * Holding the tile shows the full path; the menu picks another folder.
+ * Several can be added, each with its own folder.
  */
 export const FolderDocklet = GObject.registerClass(
 class FolderDocklet extends Applet {
@@ -60,26 +62,39 @@ class FolderDocklet extends Applet {
         hold.connect('end', () => this._hidePath());
         hold.connect('cancel', () => this._hidePath());
         this.add_action(hold);
-        this.connect('drag-begin', () => this._hidePath());
+        this.connect('drag-begin', () => {
+            this._hidePath();
+            this._fan.close();
+        });
+        this._fan = new FolderFan(this);
 
         this._cancellable = null;
         this._missing = false;
         this.connect('destroy', () => {
             this._cancellable?.cancel();
             this._tooltip?.destroy();
+            this._fan.destroy();
         });
         this._sync();
     }
 
     get defaults() {
-        return {path: GLib.get_home_dir()};
+        return {path: GLib.get_home_dir(), click: 'fan'};
     }
 
     get _file() {
         return Gio.File.new_for_path(this.settings.path);
     }
 
-    activate() {
+    activate(button) {
+        if (this.settings.click === 'fan' && button !== Clutter.BUTTON_MIDDLE &&
+            !this._missing)
+            this._fan.toggle(this._file, () => this._openFolder());
+        else
+            this._openFolder();
+    }
+
+    _openFolder() {
         if (this._missing) {
             Main.notifyError(_('Folder not found'), this.settings.path);
             return;
@@ -93,9 +108,13 @@ class FolderDocklet extends Applet {
     }
 
     buildMenu(menu) {
-        menu.addAction(_('Open'), () => this.activate());
+        menu.addAction(_('Open'), () => this._openFolder());
         menu.addAction(_('Choose Folder…'), () => this._chooseFolder());
         this.addChoice(menu, _('Places'), 'path', this._places());
+        this.addChoice(menu, _('Click'), 'click', [
+            ['fan', _('Show Newest Items')],
+            ['open', _('Open Folder')],
+        ]);
     }
 
     /** Home and the XDG folders, plus the current folder if it's another one. */

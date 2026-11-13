@@ -350,8 +350,12 @@ export class DockManager extends Signals.EventEmitter {
         const wanted = new Map();
         for (const app of this._favorites.getFavorites())
             wanted.set(app.get_id(), app);
-        for (const app of appSystem.get_running())
-            wanted.set(app.get_id(), app);
+        // Running apps get a tile unless an applet stands in for them
+        const claimed = new Set(this.tiles.flatMap(t => t.claimedAppIds ?? []));
+        for (const app of appSystem.get_running()) {
+            if (!claimed.has(app.get_id()))
+                wanted.set(app.get_id(), app);
+        }
 
         for (const tile of [...this._tiles.values()]) {
             if (tile instanceof AppDocklet && !wanted.has(tile.app.get_id()))
@@ -495,8 +499,12 @@ export class DockManager extends Signals.EventEmitter {
             if (info.multiple)
                 delete this._appletSettings[id];
             const tile = this._tiles.get(id);
-            if (tile)
+            if (tile) {
                 this._forgetTile(tile);
+                // A running app it stood in for needs its own tile again
+                if (tile.claimedAppIds.length > 0)
+                    this._syncAppTiles();
+            }
         }
         this._queueSave();
         this.emit('applets-changed');
@@ -518,7 +526,10 @@ export class DockManager extends Signals.EventEmitter {
             this._queueSave();
         });
         tile.connect('remove-requested', () => this.setAppletEnabled(id, false));
+        tile.connect('claims-changed', () => this._syncAppTiles());
         this._addTile(tile, this._firstFree(DEFAULT_APPLET_EDGE));
+        if (tile.claimedAppIds.length > 0)
+            this._syncAppTiles();
     }
 
     // ---- persistence ------------------------------------------------

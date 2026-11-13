@@ -17,6 +17,7 @@ export const Applet = GObject.registerClass({
     Signals: {
         'settings-changed': {},
         'remove-requested': {},
+        'claims-changed': {},
     },
 }, class Applet extends Docklet {
     /**
@@ -50,6 +51,17 @@ export const Applet = GObject.registerClass({
 
     get id() {
         return this._appletId;
+    }
+
+    /**
+     * Desktop ids of apps this applet stands in for. The dock gives them
+     * no tile of their own while they run (unless they're pinned); emit
+     * 'claims-changed' when the list changes.
+     *
+     * @returns {string[]}
+     */
+    get claimedAppIds() {
+        return [];
     }
 
     /** Default settings; subclasses override. */
@@ -102,6 +114,22 @@ export const Applet = GObject.registerClass({
     }
 
     openMenu() {
+        this.openPopup(menu => {
+            this.buildMenu(menu);
+            if (!menu.isEmpty())
+                menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+            menu.addAction(_('Remove'), () => this.emit('remove-requested'));
+        });
+    }
+
+    /**
+     * Open a popup menu beside the tile, filled by `build(menu)`. The
+     * settings menu uses it too, so only one of them is open at a time.
+     *
+     * @param {function(PopupMenu.PopupMenu): void} build
+     * @returns {PopupMenu.PopupMenu}
+     */
+    openPopup(build) {
         // Recreate when the tile moved to another edge so the arrow
         // points the right way.
         if (this._menu && this._menuSide !== this.menuSide) {
@@ -117,11 +145,9 @@ export const Applet = GObject.registerClass({
         }
 
         this._menu.removeAll();
-        this.buildMenu(this._menu);
-        if (!this._menu.isEmpty())
-            this._menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        this._menu.addAction(_('Remove'), () => this.emit('remove-requested'));
+        build(this._menu);
         this._menu.open();
+        return this._menu;
     }
 });
 
