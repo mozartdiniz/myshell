@@ -88,6 +88,7 @@
     <file>ui/dock/applets.js</file>
     <file>ui/dock/docklets/agent.js</file>
     <file>ui/dock/docklets/battery.js</file>
+    <file>ui/dock/docklets/caffeine.js</file>
     <file>ui/dock/docklets/claude.js</file>
     <file>ui/dock/docklets/clock.js</file>
     <file>ui/dock/docklets/colorPicker.js</file>

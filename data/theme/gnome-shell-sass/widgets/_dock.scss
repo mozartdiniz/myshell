@@ -90,6 +90,11 @@ $dock_bevel_dark: #151515;
 
 .timer-duration-entry:error { border-color: $destructive_bg_color; }
 
+.applet-caffeine-left {
+  margin: 3px 4px 0 0;
+  font-feature-settings: "tnum";
+}
+
 .applet-color-swatch {
   width: 30px;
   height: 30px;

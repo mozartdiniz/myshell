@@ -1,5 +1,6 @@
 import {AgentDocklet} from './docklets/agent.js';
 import {BatteryDocklet} from './docklets/battery.js';
+import {CaffeineDocklet} from './docklets/caffeine.js';
 import {ClaudeDocklet} from './docklets/claude.js';
 import {ClockDocklet} from './docklets/clock.js';
 import {ColorPickerDocklet} from './docklets/colorPicker.js';
@@ -87,6 +88,13 @@ export const APPLETS = [
         description: _('How many notifications are waiting, and the list of them'),
         icon: 'preferences-system-notifications-symbolic',
         type: NotificationsDocklet,
+    },
+    {
+        id: 'caffeine',
+        name: _('Caffeine'),
+        description: _('Keeps the screen on and the computer from suspending'),
+        icon: 'display-brightness-symbolic',
+        type: CaffeineDocklet,
     },
     {
         id: 'color-picker',
