@@ -6,6 +6,7 @@ import {ClockDocklet} from './docklets/clock.js';
 import {ColorPickerDocklet} from './docklets/colorPicker.js';
 import {CpuDocklet} from './docklets/cpu.js';
 import {DateDocklet} from './docklets/date.js';
+import {EyesDocklet} from './docklets/eyes.js';
 import {FolderDocklet} from './docklets/folder.js';
 import {MemoryDocklet} from './docklets/memory.js';
 import {MusicDocklet} from './docklets/music.js';
@@ -152,6 +153,13 @@ export const APPLETS = [
         icon: 'folder-symbolic',
         type: FolderDocklet,
         multiple: true,
+    },
+    {
+        id: 'eyes',
+        name: _('Eyes'),
+        description: _('A pair of eyes that follows the pointer'),
+        icon: 'view-reveal-symbolic',
+        type: EyesDocklet,
     },
     {
         id: 'trash',

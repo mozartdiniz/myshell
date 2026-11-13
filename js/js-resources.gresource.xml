@@ -94,6 +94,7 @@
     <file>ui/dock/docklets/colorPicker.js</file>
     <file>ui/dock/docklets/cpu.js</file>
     <file>ui/dock/docklets/date.js</file>
+    <file>ui/dock/docklets/eyes.js</file>
     <file>ui/dock/docklets/folder.js</file>
     <file>ui/dock/docklets/memory.js</file>
     <file>ui/dock/docklets/meter.js</file>
