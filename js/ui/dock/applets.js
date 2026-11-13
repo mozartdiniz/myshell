@@ -10,6 +10,7 @@ import {MusicDocklet} from './docklets/music.js';
 import {NetworkDocklet} from './docklets/network.js';
 import {NotificationsDocklet} from './docklets/notifications.js';
 import {SystemDocklet} from './docklets/system.js';
+import {TimerDocklet} from './docklets/timer.js';
 import {TrashDocklet} from './docklets/trash.js';
 import {VolumeDocklet} from './docklets/volume.js';
 import {WeatherDocklet} from './docklets/weather.js';
@@ -42,6 +43,13 @@ export const APPLETS = [
         description: _('Weekday, day and month'),
         icon: 'x-office-calendar-symbolic',
         type: DateDocklet,
+    },
+    {
+        id: 'timer',
+        name: _('Timer'),
+        description: _('Counts down up to 99 minutes, rings, and starts again'),
+        icon: 'alarm-symbolic',
+        type: TimerDocklet,
     },
     {
         id: 'weather',

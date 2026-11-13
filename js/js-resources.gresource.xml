@@ -99,6 +99,7 @@
     <file>ui/dock/docklets/network.js</file>
     <file>ui/dock/docklets/notifications.js</file>
     <file>ui/dock/docklets/system.js</file>
+    <file>ui/dock/docklets/timer.js</file>
     <file>ui/dock/docklets/trash.js</file>
     <file>ui/dock/docklets/volume.js</file>
     <file>ui/dock/docklets/weather.js</file>

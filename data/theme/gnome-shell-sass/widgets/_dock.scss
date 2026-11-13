@@ -67,6 +67,29 @@ $dock_bevel_dark: #151515;
   margin-top: 3px;
 }
 
+.applet-timer-big {
+  font-size: 30pt;
+  font-weight: normal;
+  font-feature-settings: "tnum";
+  margin-bottom: 2px;
+  &:paused { color: #808080; }
+}
+
+.applet-timer-corner {
+  margin: 2px 4px 0 0;
+  &:paused { color: #808080; }
+}
+
+.applet-timer-bar {
+  width: 54px;
+  height: 3px;
+  margin-bottom: 5px;
+}
+
+.timer-docklet:ringing { background-color: #7a2e24; }
+
+.timer-duration-entry:error { border-color: $destructive_bg_color; }
+
 .applet-folder-name {
   max-width: 58px;
   margin-top: 2px;
