@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
   <gresource prefix="/org/gnome/shell/theme">
+    <file>agent/cooking.png</file>
+    <file>agent/dead.png</file>
+    <file>agent/done.png</file>
+    <file>agent/error.png</file>
+    <file>agent/idle.png</file>
+    <file>agent/input.png</file>
     <file>calendar-today.svg</file>
     <file>calendar-today-light.svg</file>
     <file>gnome-shell-dark.css</file>

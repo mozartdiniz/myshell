@@ -86,6 +86,7 @@
     <file>ui/dock/folderFan.js</file>
     <file>ui/dock/applet.js</file>
     <file>ui/dock/applets.js</file>
+    <file>ui/dock/docklets/agent.js</file>
     <file>ui/dock/docklets/battery.js</file>
     <file>ui/dock/docklets/claude.js</file>
     <file>ui/dock/docklets/clock.js</file>

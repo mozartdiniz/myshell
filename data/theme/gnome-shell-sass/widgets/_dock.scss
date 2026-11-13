@@ -72,6 +72,11 @@ $dock_bevel_dark: #151515;
   margin-top: 2px;
 }
 
+.applet-agent-name {
+  max-width: 58px;
+  margin-top: 1px;
+}
+
 .docklet-tooltip {
   @extend %tooltip;
 }

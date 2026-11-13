@@ -1,3 +1,4 @@
+import {AgentDocklet} from './docklets/agent.js';
 import {BatteryDocklet} from './docklets/battery.js';
 import {ClaudeDocklet} from './docklets/claude.js';
 import {ClockDocklet} from './docklets/clock.js';
@@ -62,6 +63,14 @@ export const APPLETS = [
         description: _('Your plan’s session and weekly limits'),
         icon: 'starred-symbolic',
         type: ClaudeDocklet,
+    },
+    {
+        id: 'agent',
+        name: _('Claude Agent'),
+        description: _('A Claude Code session; its face shows what it’s doing'),
+        icon: 'utilities-terminal-symbolic',
+        type: AgentDocklet,
+        multiple: true,
     },
     {
         id: 'notifications',
