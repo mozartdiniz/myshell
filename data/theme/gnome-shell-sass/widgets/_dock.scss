@@ -395,3 +395,33 @@ $dock_bevel_dark: #151515;
 
 .music-applet-track { spacing: $base_padding * 1.5; }
 .music-applet-track-title { max-width: 260px; }
+
+/* Claude usage applet */
+.claude-applet-box {
+  spacing: $base_padding * 2;
+  padding: $base_padding 0;
+}
+.claude-applet-limit { spacing: 4px; }
+.claude-applet-limit-title { font-weight: bold; }
+.claude-applet-limit-percent {
+  font-weight: bold;
+  font-feature-settings: "tnum";
+}
+.claude-applet-bar {
+  height: 6px;
+  border-radius: 3px;
+  background-color: transparentize($fg_color, 0.85);
+}
+.claude-applet-bar-fill {
+  height: 6px;
+  border-radius: 3px;
+  background-color: rgb(94, 179, 217);
+  &.warning { background-color: rgb(230, 158, 77); }
+  &.critical { background-color: rgb(224, 84, 77); }
+}
+.claude-applet-caption,
+.claude-applet-status {
+  @extend %caption;
+  color: transparentize($fg_color, 0.35);
+}
+.claude-applet-status { max-width: 280px; }

@@ -87,6 +87,7 @@
     <file>ui/dock/applet.js</file>
     <file>ui/dock/applets.js</file>
     <file>ui/dock/docklets/battery.js</file>
+    <file>ui/dock/docklets/claude.js</file>
     <file>ui/dock/docklets/clock.js</file>
     <file>ui/dock/docklets/cpu.js</file>
     <file>ui/dock/docklets/date.js</file>

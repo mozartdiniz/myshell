@@ -1,10 +1,14 @@
 import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import Shell from 'gi://Shell';
+import St from 'gi://St';
 
 import * as Main from '../main.js';
 import * as PopupMenu from '../popupMenu.js';
 import {Docklet} from './docklet.js';
+
+const TOOLTIP_GAP = 6;
+const TOOLTIP_FADE_TIME = 100;
 
 /**
  * A docklet that can be added and removed from the launcher's Applets
@@ -46,7 +50,12 @@ export const Applet = GObject.registerClass({
                 this.activate(button);
         });
         this.connect('popup-menu', () => this.openMenu());
-        this.connect('destroy', () => this._menu?.destroy());
+        this._tooltip = null;
+        this.connect('drag-begin', () => this.hideTooltip());
+        this.connect('destroy', () => {
+            this._menu?.destroy();
+            this._tooltip?.destroy();
+        });
     }
 
     get id() {
@@ -113,6 +122,72 @@ export const Applet = GObject.registerClass({
             menu.addAction(label, () => app.activate());
     }
 
+    /**
+     * Show `text` beside the tile, on the side facing into the screen,
+     * or update it if it's showing.
+     *
+     * @param {string} text
+     */
+    showTooltip(text) {
+        if (!this._tooltip) {
+            this._tooltip = new St.Label({style_class: 'docklet-tooltip'});
+            // uiGroup may be destroyed before us on shutdown
+            this._tooltip.connect('destroy', () => (this._tooltip = null));
+            Main.uiGroup.add_child(this._tooltip);
+        }
+        const tooltip = this._tooltip;
+        const wasShown = tooltip.visible && tooltip.opacity > 0;
+        tooltip.text = text;
+        if (!wasShown) {
+            tooltip.opacity = 0;
+            tooltip.show();
+        }
+        Main.uiGroup.set_child_above_sibling(tooltip, null);
+
+        const [x, y] = this.get_transformed_position();
+        const [w, h] = this.get_transformed_size();
+        const [, , tw, th] = tooltip.get_preferred_size();
+        let tx = x + (w - tw) / 2;
+        let ty = y + (h - th) / 2;
+        switch (this.menuSide) {
+        case St.Side.LEFT:
+            tx = x + w + TOOLTIP_GAP;
+            break;
+        case St.Side.RIGHT:
+            tx = x - tw - TOOLTIP_GAP;
+            break;
+        case St.Side.TOP:
+            ty = y + h + TOOLTIP_GAP;
+            break;
+        case St.Side.BOTTOM:
+            ty = y - th - TOOLTIP_GAP;
+            break;
+        }
+        const m = Main.layoutManager.findMonitorForActor(this) ??
+            Main.layoutManager.primaryMonitor;
+        tx = Math.clamp(tx, m.x, m.x + m.width - tw);
+        ty = Math.clamp(ty, m.y, m.y + m.height - th);
+        tooltip.set_position(Math.round(tx), Math.round(ty));
+        tooltip.ease({
+            opacity: 255,
+            duration: TOOLTIP_FADE_TIME,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+        });
+    }
+
+    hideTooltip() {
+        this._tooltip?.ease({
+            opacity: 0,
+            duration: TOOLTIP_FADE_TIME,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            onComplete: () => this._tooltip?.hide(),
+        });
+    }
+
+    get tooltipShown() {
+        return !!this._tooltip?.visible && this._tooltip.opacity > 0;
+    }
+
     openMenu() {
         this.openPopup(menu => {
             this.buildMenu(menu);
@@ -144,6 +219,7 @@ export const Applet = GObject.registerClass({
             this._menuManager.addMenu(this._menu);
         }
 
+        this.hideTooltip();
         this._menu.removeAll();
         build(this._menu);
         this._menu.open();

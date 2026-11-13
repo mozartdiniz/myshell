@@ -1,4 +1,5 @@
 import {BatteryDocklet} from './docklets/battery.js';
+import {ClaudeDocklet} from './docklets/claude.js';
 import {ClockDocklet} from './docklets/clock.js';
 import {CpuDocklet} from './docklets/cpu.js';
 import {DateDocklet} from './docklets/date.js';
@@ -53,6 +54,13 @@ export const APPLETS = [
         description: _('Figaro’s tile: play, pause, up next, show or hide its window'),
         icon: 'audio-x-generic-symbolic',
         type: MusicDocklet,
+    },
+    {
+        id: 'claude',
+        name: _('Claude Usage'),
+        description: _('Your plan’s session and weekly limits'),
+        icon: 'starred-symbolic',
+        type: ClaudeDocklet,
     },
     {
         id: 'cpu',
