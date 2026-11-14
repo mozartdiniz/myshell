@@ -1,5 +1,6 @@
 subdir('misc')
 subdir('dbusServices')
+subdir('translator')
 
 js_resources = gnome.compile_resources(
   'js-resources', 'js-resources.gresource.xml',

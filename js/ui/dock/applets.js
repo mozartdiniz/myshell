@@ -16,6 +16,7 @@ import {NetworkDocklet} from './docklets/network.js';
 import {NotificationsDocklet} from './docklets/notifications.js';
 import {SystemDocklet} from './docklets/system.js';
 import {TimerDocklet} from './docklets/timer.js';
+import {TranslatorDocklet} from './docklets/translator.js';
 import {TrashDocklet} from './docklets/trash.js';
 import {VolumeDocklet} from './docklets/volume.js';
 import {WeatherDocklet} from './docklets/weather.js';
@@ -105,6 +106,13 @@ export const APPLETS = [
         description: _('What you copied lately; click or Super+V to copy it again'),
         icon: 'edit-paste-symbolic',
         type: ClipboardDocklet,
+    },
+    {
+        id: 'translator',
+        name: _('Translator'),
+        description: _('Translates what you copied with the lab’s local model'),
+        icon: 'accessories-dictionary-symbolic',
+        type: TranslatorDocklet,
     },
     {
         id: 'color-picker',

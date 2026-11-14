@@ -17,8 +17,8 @@ the login screen and can always go back.
 - **Applets**, added from the launcher's Applets tab or the desktop menu:
   System (quick settings, lock, log out), Clock, Date, Timer, Weather,
   Figaro (music), Claude Usage, Claude Agent, Notifications, Caffeine,
-  Clipboard, Color Picker, CPU, Memory, Network, Volume, Battery,
-  Workspaces, Folder, Eyes, Trash, and the Clip.
+  Clipboard, Translator, Color Picker, CPU, Memory, Network, Volume,
+  Battery, Workspaces, Folder, Eyes, Trash, and the Clip.
 - **The Clip**, as in WindowMaker. It switches workspaces (arrows in its
   corners, or scroll) and holds icons per workspace. Its extra:
   - **Click** for Focus mode: every tile outside the Clip slides away and
@@ -39,6 +39,15 @@ the login screen and can always go back.
   (text and images, not password managers' copies) until you log out.
   Click it or press Super+V to copy something again; pin what you want
   to keep.
+- **Translator**: the Translator applet toggles a small window above the
+  others that translates between Portuguese (Brazil), English (US),
+  English (UK), Italian and Spanish with the lab's local model
+  (`local__run` through lab-gateway, with the token in
+  `~/.config/lab-notes/token`). The same language on both sides
+  proofreads instead, keeping your wording. It opens with what you copied
+  last, and you can add instructions for the model, such as “keep the
+  tone”, “make it polite” or “fix only the spelling”. Ctrl+Enter
+  translates.
 - **Launcher** with search on Super (all apps with Super+A), and a
   WindowMaker **root menu** on a right-click on the desktop. A middle-click
   on the desktop, or Super+F11, lists every window.
@@ -83,8 +92,9 @@ If Tessera doesn't start, log in with GNOME instead and look at its log:
 Everything lives in `~/.config/tessera`: the tile layout (`tiles.json`),
 the applets and their settings (`applets.json`), pinned app tiles
 (`app-tiles.json`), the Clip (`clip.json`), the number of workspaces
-(`workspaces.json`), their wallpapers (`wallpapers.json`) and the
-workspace sets (`sets.json`). Copy the folder to take your desktop to another
+(`workspaces.json`), their wallpapers (`wallpapers.json`), the workspace
+sets (`sets.json`) and the Translator's languages and instructions
+(`translator.json`). Copy the folder to take your desktop to another
 machine.
 
 ## Hacking

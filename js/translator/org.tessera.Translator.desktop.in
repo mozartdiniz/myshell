@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Translator
+Comment=Translate with the lab’s local model
+Icon=accessories-dictionary
+# Started and toggled by Tessera's Translator applet
+Exec=@gjs@ -m @pkgdatadir@/translator/main.js
+Terminal=false
+NoDisplay=true
