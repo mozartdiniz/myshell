@@ -528,6 +528,47 @@ $dock_bevel_dark: #151515;
   &:active { background-color: transparentize($fg_color, 0.75); }
 }
 
+/* Clipboard applet */
+.clipboard-docklet-count { margin: 3px 4px 0 0; }
+
+.clipboard-applet-scroll { max-height: 440px; }
+.clipboard-applet-list {
+  width: 340px;
+  spacing: 2px;
+}
+.clipboard-applet-heading,
+.clipboard-applet-empty {
+  @extend %caption;
+  color: transparentize($fg_color, 0.35);
+}
+.clipboard-applet-heading { padding: $base_padding $base_padding * 1.5 0; }
+.clipboard-applet-row { spacing: 2px; }
+.clipboard-applet-copy {
+  padding: $base_padding $base_padding * 1.5;
+  border-radius: $base_border_radius;
+  &:hover { background-color: transparentize($fg_color, 0.9); }
+  &:focus { background-color: transparentize($fg_color, 0.85); }
+  &:active { background-color: transparentize($fg_color, 0.8); }
+}
+.clipboard-applet-text { max-height: 4.5em; }
+.clipboard-applet-action {
+  padding: $base_padding * 0.75;
+  margin-top: $base_padding * 0.5;
+  border-radius: 99px;
+  & StIcon { icon-size: 12px; }
+  &:hover { background-color: transparentize($fg_color, 0.85); }
+  &:active { background-color: transparentize($fg_color, 0.75); }
+  &:checked { color: $accent_color; }
+}
+
+/* The workspace's name, shown when switching */
+.workspace-name {
+  font-size: 28pt;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+}
+
 /* The Clip */
 .clip-docklet-number {
   font-size: 20pt;

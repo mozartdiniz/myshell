@@ -12,6 +12,8 @@ import * as SystemActions from '../../misc/systemActions.js';
 import {findApp} from './applet.js';
 import {APPLETS} from './applets.js';
 import {MAX_WORKSPACES} from './fixedWorkspaces.js';
+import {renameWorkspace} from './nameDialog.js';
+import {saveSet} from './workspaceSets.js';
 
 const KEYBINDINGS_SCHEMA = 'org.gnome.desktop.wm.keybindings';
 const SHELL_KEYBINDINGS_SCHEMA = 'org.gnome.shell.keybindings';
@@ -692,14 +694,64 @@ export class RootMenu {
     _workspaceDef() {
         return {
             title: _('Workspace'),
+            items: () => {
+                const index = global.workspace_manager.get_active_workspace_index();
+                const items = [
+                    {
+                        label: _('Hide Others'),
+                        sensitive: !!this._lastFocusApp,
+                        activate: () => this._hideOthers(),
+                    },
+                    {label: _('Show All'), activate: () => this._showAll()},
+                    {label: _('Arrange Icons'), activate: () => Main.dock.arrangeTiles()},
+                    {label: _('Rename…'), activate: () => renameWorkspace(index)},
+                    {
+                        label: _('Wallpaper…'),
+                        activate: () => Main.workspaceBackgrounds.choose(index),
+                    },
+                ];
+                if (Main.workspaceBackgrounds.uriFor(index)) {
+                    items.push({
+                        label: _('Use the Desktop’s Wallpaper'),
+                        activate: () => Main.workspaceBackgrounds.set(index, null),
+                    });
+                }
+                items.push({label: _('Sets'), submenu: () => this._setsDef()});
+                return items;
+            },
+        };
+    }
+
+    /** Workspace sets, each with what can be done with it. */
+    _setsDef() {
+        return {
+            title: _('Sets'),
             items: () => [
                 {
-                    label: _('Hide Others'),
-                    sensitive: !!this._lastFocusApp,
-                    activate: () => this._hideOthers(),
+                    label: _('Save Workspace as Set…'),
+                    activate: () => saveSet(global.workspace_manager.get_active_workspace_index()),
                 },
-                {label: _('Show All'), activate: () => this._showAll()},
-                {label: _('Arrange Icons'), activate: () => Main.dock.arrangeTiles()},
+                ...Main.workspaceSets.names.map(name => ({
+                    label: name,
+                    submenu: () => ({
+                        title: name,
+                        items: () => [
+                            {
+                                label: _('Open Here'),
+                                activate: () => Main.workspaceSets.restore(name),
+                            },
+                            {
+                                label: _('Open in New Workspace'),
+                                sensitive: global.workspace_manager.n_workspaces < MAX_WORKSPACES,
+                                activate: () => Main.workspaceSets.restore(name, true),
+                            },
+                            {
+                                label: _('Delete'),
+                                activate: () => Main.workspaceSets.remove(name),
+                            },
+                        ],
+                    }),
+                })),
             ],
         };
     }

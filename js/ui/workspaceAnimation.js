@@ -181,6 +181,7 @@ class WorkspaceBackground extends BaseWorkspaceGroup {
             container: background,
             monitorIndex: this._monitor.index,
             controlPosition: false,
+            workspace: this._workspace,
         });
     }
 

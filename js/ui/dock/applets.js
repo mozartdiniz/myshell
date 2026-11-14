@@ -3,6 +3,7 @@ import {BatteryDocklet} from './docklets/battery.js';
 import {CaffeineDocklet} from './docklets/caffeine.js';
 import {ClaudeDocklet} from './docklets/claude.js';
 import {ClipDocklet} from './docklets/clip.js';
+import {ClipboardDocklet} from './docklets/clipboard.js';
 import {ClockDocklet} from './docklets/clock.js';
 import {ColorPickerDocklet} from './docklets/colorPicker.js';
 import {CpuDocklet} from './docklets/cpu.js';
@@ -97,6 +98,13 @@ export const APPLETS = [
         description: _('Keeps the screen on and the computer from suspending'),
         icon: 'display-brightness-symbolic',
         type: CaffeineDocklet,
+    },
+    {
+        id: 'clipboard',
+        name: _('Clipboard'),
+        description: _('What you copied lately; click or Super+V to copy it again'),
+        icon: 'edit-paste-symbolic',
+        type: ClipboardDocklet,
     },
     {
         id: 'color-picker',

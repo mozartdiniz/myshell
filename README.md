@@ -17,8 +17,8 @@ the login screen and can always go back.
 - **Applets**, added from the launcher's Applets tab or the desktop menu:
   System (quick settings, lock, log out), Clock, Date, Timer, Weather,
   Figaro (music), Claude Usage, Claude Agent, Notifications, Caffeine,
-  Color Picker, CPU, Memory, Network, Volume, Battery, Workspaces, Folder,
-  Eyes, Trash, and the Clip.
+  Clipboard, Color Picker, CPU, Memory, Network, Volume, Battery,
+  Workspaces, Folder, Eyes, Trash, and the Clip.
 - **The Clip**, as in WindowMaker. It switches workspaces (arrows in its
   corners, or scroll) and holds icons per workspace. Its extra:
   - **Click** for Focus mode: every tile outside the Clip slides away and
@@ -27,6 +27,18 @@ the login screen and can always go back.
   - **Ctrl+click** for Exposé: the workspace's windows spread out to pick
     one.
   - **Middle-click** collapses its icons; **right-click** for its menu.
+  - **Workspace sets**: its menu saves the workspace under a name, with
+    its windows, wallpaper and Focus mode, and opens a set again on any
+    workspace, starting the apps that aren't running. The root menu's
+    Workspace → Sets can also open one in a new workspace.
+- **A wallpaper per workspace**, as WindowMaker's WorkspaceSpecificBack:
+  pick one from the Clip's menu or the root menu, or drop an image on
+  the Clip. Each workspace's name shows in the middle of the screen when
+  you switch to it.
+- **Clipboard history**: the Clipboard applet keeps what you copied
+  (text and images, not password managers' copies) until you log out.
+  Click it or press Super+V to copy something again; pin what you want
+  to keep.
 - **Launcher** with search on Super (all apps with Super+A), and a
   WindowMaker **root menu** on a right-click on the desktop. A middle-click
   on the desktop, or Super+F11, lists every window.
@@ -40,6 +52,8 @@ the login screen and can always go back.
 | Super+S | Quick settings |
 | Super+Z | Focus mode |
 | Super+E | Exposé |
+| Super+V | Clipboard history (with the Clipboard applet) |
+| Super+M | Notification list |
 | Super+F11 | Window list |
 
 ## Install
@@ -68,8 +82,9 @@ If Tessera doesn't start, log in with GNOME instead and look at its log:
 
 Everything lives in `~/.config/tessera`: the tile layout (`tiles.json`),
 the applets and their settings (`applets.json`), pinned app tiles
-(`app-tiles.json`), the Clip (`clip.json`) and the number of workspaces
-(`workspaces.json`). Copy the folder to take your desktop to another
+(`app-tiles.json`), the Clip (`clip.json`), the number of workspaces
+(`workspaces.json`), their wallpapers (`wallpapers.json`) and the
+workspace sets (`sets.json`). Copy the folder to take your desktop to another
 machine.
 
 ## Hacking

@@ -350,10 +350,21 @@ export class Clip {
         this.setFocus(!this.focusActive);
     }
 
-    setFocus(on) {
+    /**
+     * Whether Focus mode is on for workspace `ws`, other than for a
+     * maximized window, which turns it on by itself.
+     */
+    isFocused(ws) {
+        return this._focus.has(ws) && !this._autoFocused.has(ws);
+    }
+
+    /**
+     * @param {boolean} on
+     * @param {number} [ws] - the workspace; the current one by default
+     */
+    setFocus(on, ws = this._workspace) {
         if (!this.active)
             return;
-        const ws = this._workspace;
         this._autoFocused.delete(ws);
         if (on)
             this._focus.add(ws);

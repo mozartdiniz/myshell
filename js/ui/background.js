@@ -710,7 +710,7 @@ class BackgroundSource {
         this._layoutManager = layoutManager;
         this._overrideImage = GLib.getenv('SHELL_BACKGROUND_IMAGE');
         this._settings = new Gio.Settings({schema_id: settingsSchema});
-        this._backgrounds = [];
+        this._backgrounds = {};
 
         const monitorManager = global.backend.get_monitor_manager();
         this._monitorsChangedId =
@@ -721,20 +721,26 @@ class BackgroundSource {
     }
 
     _onMonitorsChanged() {
-        for (const monitorIndex in this._backgrounds) {
-            const background = this._backgrounds[monitorIndex];
+        for (const key in this._backgrounds) {
+            const background = this._backgrounds[key];
 
-            if (monitorIndex < this._layoutManager.monitors.length) {
+            if (background._monitorIndex < this._layoutManager.monitors.length) {
                 background.updateResolution();
             } else {
                 background.disconnect(background._changedId);
                 background.destroy();
-                delete this._backgrounds[monitorIndex];
+                delete this._backgrounds[key];
             }
         }
     }
 
-    getBackground(monitorIndex) {
+    /**
+     * @param {number} monitorIndex
+     * @param {Gio.File} [workspaceFile] - a workspace's own wallpaper
+     *   (see dock/workspaceBackgrounds.js), shown instead of the
+     *   settings' one
+     */
+    getBackground(monitorIndex, workspaceFile = null) {
         let file = null;
         let style;
 
@@ -745,6 +751,12 @@ class BackgroundSource {
         if (this._overrideImage != null) {
             file = Gio.File.new_for_path(this._overrideImage);
             style = GDesktopEnums.BackgroundStyle.ZOOM; // Hardcode
+        } else if (workspaceFile) {
+            file = workspaceFile;
+            style = this._settings.get_enum(BACKGROUND_STYLE_KEY);
+            // A color-only desktop still shows the workspace's image
+            if (style === GDesktopEnums.BackgroundStyle.NONE)
+                style = GDesktopEnums.BackgroundStyle.ZOOM;
         } else {
             style = this._settings.get_enum(BACKGROUND_STYLE_KEY);
             if (style !== GDesktopEnums.BackgroundStyle.NONE) {
@@ -765,7 +777,8 @@ class BackgroundSource {
         if (file == null || !file.get_basename().endsWith('.xml'))
             monitorIndex = 0;
 
-        if (!(monitorIndex in this._backgrounds)) {
+        const key = workspaceFile ? `${monitorIndex} ${file.get_uri()}` : String(monitorIndex);
+        if (!(key in this._backgrounds)) {
             const background = new Background({
                 monitorIndex,
                 layoutManager: this._layoutManager,
@@ -777,13 +790,13 @@ class BackgroundSource {
             background._changedId = background.connect('bg-changed', () => {
                 background.disconnect(background._changedId);
                 background.destroy();
-                delete this._backgrounds[monitorIndex];
+                delete this._backgrounds[key];
             });
 
-            this._backgrounds[monitorIndex] = background;
+            this._backgrounds[key] = background;
         }
 
-        return this._backgrounds[monitorIndex];
+        return this._backgrounds[key];
     }
 
     destroy() {
@@ -850,6 +863,9 @@ export class BackgroundManager extends Signals.EventEmitter {
             controlPosition: true,
             settingsSchema: BACKGROUND_SCHEMA,
             useContentSize: true,
+            // A Meta.Workspace whose own wallpaper to show, if it has
+            // one, or 'active' to follow the active workspace
+            workspace: null,
         });
 
         const cache = getBackgroundCache();
@@ -863,11 +879,44 @@ export class BackgroundManager extends Signals.EventEmitter {
         this._controlPosition = params.controlPosition;
         this._useContentSize = params.useContentSize;
 
+        this._workspace = params.workspace;
+        this._workspaceFile = this._getWorkspaceFile();
+        if (this._workspace) {
+            // Fade to a new wallpaper, but switch workspaces at once: the
+            // switch animation slides the wallpapers along already
+            Main.workspaceBackgrounds?.connectObject('changed',
+                () => this._syncWorkspaceFile(true), this);
+            if (this._workspace === 'active') {
+                global.workspace_manager.connectObject('active-workspace-changed',
+                    () => this._syncWorkspaceFile(false), this);
+            }
+        }
+
         this.backgroundActor = this._createBackgroundActor();
         this._newBackgroundActor = null;
     }
 
+    _getWorkspaceFile() {
+        if (!this._workspace || !Main.workspaceBackgrounds)
+            return null;
+        const index = this._workspace === 'active'
+            ? global.workspace_manager.get_active_workspace_index()
+            : this._workspace.index();
+        return Main.workspaceBackgrounds.fileFor(index);
+    }
+
+    _syncWorkspaceFile(fade) {
+        const file = this._getWorkspaceFile();
+        if (file?.get_uri() === this._workspaceFile?.get_uri())
+            return;
+        this._workspaceFile = file;
+        this._updateBackgroundActor(fade);
+    }
+
     destroy() {
+        Main.workspaceBackgrounds?.disconnectObject(this);
+        global.workspace_manager.disconnectObject(this);
+
         const cache = getBackgroundCache();
         cache.releaseBackgroundSource(this._settingsSchema);
         this._backgroundSource = null;
@@ -885,11 +934,12 @@ export class BackgroundManager extends Signals.EventEmitter {
 
     _swapBackgroundActor() {
         const oldBackgroundActor = this.backgroundActor;
+        const fade = this._newBackgroundActor.fade;
         this.backgroundActor = this._newBackgroundActor;
         this._newBackgroundActor = null;
         this.emit('changed');
 
-        if (Main.layoutManager.screenTransition.visible) {
+        if (!fade || Main.layoutManager.screenTransition.visible) {
             oldBackgroundActor.destroy();
             return;
         }
@@ -902,7 +952,7 @@ export class BackgroundManager extends Signals.EventEmitter {
         });
     }
 
-    _updateBackgroundActor() {
+    _updateBackgroundActor(fade = true) {
         if (this._newBackgroundActor) {
             /* Skip displaying existing background queued for load */
             this._newBackgroundActor.destroy();
@@ -918,6 +968,7 @@ export class BackgroundManager extends Signals.EventEmitter {
         newContent.brightness = oldContent.brightness;
 
         newBackgroundActor.visible = this.backgroundActor.visible;
+        newBackgroundActor.fade = fade;
 
         this._newBackgroundActor = newBackgroundActor;
 
@@ -937,7 +988,8 @@ export class BackgroundManager extends Signals.EventEmitter {
     }
 
     _createBackgroundActor() {
-        const background = this._backgroundSource.getBackground(this._monitorIndex);
+        const background = this._backgroundSource.getBackground(this._monitorIndex,
+            this._workspaceFile);
         const backgroundActor = new Meta.BackgroundActor({
             meta_display: global.display,
             monitor: this._monitorIndex,

@@ -741,8 +741,7 @@ export class DockManager extends Signals.EventEmitter {
     _onDragMotion({x, y, source}) {
         if (source !== Main.xdndHandler)
             return DND.DragMotionResult.CONTINUE;
-        const tile = this.tiles.find(t =>
-            t instanceof AppDocklet && t.acceptsFiles && contains(t, x, y));
+        const tile = this.tiles.find(t => t.acceptsFiles && contains(t, x, y));
         this._setDropTile(tile ?? null);
         // Read the files while the drag is on: a drop on a tile isn't
         // a drop on a client, so the source goes away with it.
@@ -780,7 +779,7 @@ export class DockManager extends Signals.EventEmitter {
         const list = await uris;
         // The tile may have gone while the files were read
         if (list.length && this._tiles.get(tile.id) === tile)
-            tile.launch(list);
+            tile.dropFiles(list);
     }
 
     // ---- applets -----------------------------------------------------

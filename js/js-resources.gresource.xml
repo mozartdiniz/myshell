@@ -89,11 +89,16 @@
     <file>ui/dock/clip.js</file>
     <file>ui/dock/expose.js</file>
     <file>ui/dock/fixedWorkspaces.js</file>
+    <file>ui/dock/nameDialog.js</file>
+    <file>ui/dock/workspaceBackgrounds.js</file>
+    <file>ui/dock/workspaceName.js</file>
+    <file>ui/dock/workspaceSets.js</file>
     <file>ui/dock/docklets/agent.js</file>
     <file>ui/dock/docklets/battery.js</file>
     <file>ui/dock/docklets/caffeine.js</file>
     <file>ui/dock/docklets/claude.js</file>
     <file>ui/dock/docklets/clip.js</file>
+    <file>ui/dock/docklets/clipboard.js</file>
     <file>ui/dock/docklets/clock.js</file>
     <file>ui/dock/docklets/colorPicker.js</file>
     <file>ui/dock/docklets/cpu.js</file>

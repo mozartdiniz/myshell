@@ -493,6 +493,7 @@ export const LayoutManager = GObject.registerClass({
             container: this._backgroundGroup,
             layoutManager: this,
             monitorIndex,
+            workspace: 'active',
         });
 
         bgManager.connect('changed', this._addBackgroundMenu.bind(this));

@@ -170,7 +170,7 @@
       </description>
     </key>
     <key name="toggle-message-tray" type="as">
-      <default>["&lt;Super&gt;v","&lt;Super&gt;m"]</default>
+      <default>["&lt;Super&gt;m"]</default>
       <summary>Keybinding to toggle the visibility of the notification list</summary>
       <description>
         Keybinding to toggle the visibility of the notification list.
@@ -197,6 +197,14 @@
       <description>
         Keybinding that hides, or brings back, the dock tiles that are
         not in the Clip on the current workspace.
+      </description>
+    </key>
+    <key name="toggle-clipboard" type="as">
+      <default>["&lt;Super&gt;v"]</default>
+      <summary>Keybinding to open the clipboard history</summary>
+      <description>
+        Keybinding that lists what was copied lately, while the
+        Clipboard applet is on the dock.
       </description>
     </key>
     <key name="toggle-expose" type="as">

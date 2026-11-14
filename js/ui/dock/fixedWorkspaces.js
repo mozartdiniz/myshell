@@ -42,25 +42,30 @@ export class FixedWorkspaces {
      * Add a workspace at the end.
      *
      * @param {boolean} activate - switch to it too
+     * @returns {Promise<Meta.Workspace|null>} the new workspace, once
+     *   it is there; null if there are as many as can be
      */
     add(activate = false) {
         const wm = global.workspace_manager;
         const index = wm.n_workspaces;
         if (index >= MAX_WORKSPACES)
-            return;
+            return Promise.resolve(null);
         if (Meta.prefs_get_dynamic_workspaces()) {
             const ws = wm.append_new_workspace(false, global.get_current_time());
             if (activate)
                 ws.activate(global.get_current_time());
-            return;
+            return Promise.resolve(ws);
         }
-        if (activate) {
+        return new Promise(resolve => {
             const id = wm.connect('notify::n-workspaces', () => {
                 wm.disconnect(id);
-                wm.get_workspace_by_index(index)?.activate(global.get_current_time());
+                const ws = wm.get_workspace_by_index(index);
+                if (activate)
+                    ws?.activate(global.get_current_time());
+                resolve(ws);
             });
-        }
-        this._wmPrefs.set_int('num-workspaces', index + 1);
+            this._wmPrefs.set_int('num-workspaces', index + 1);
+        });
     }
 
     /** Remove the last workspace; mutter moves its windows to the one before. */

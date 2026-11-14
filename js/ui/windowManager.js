@@ -11,7 +11,6 @@ import St from 'gi://St';
 import * as AltTab from './altTab.js';
 import * as AppFavorites from './appFavorites.js';
 import * as Dialog from './dialog.js';
-import * as WorkspaceSwitcherPopup from './workspaceSwitcherPopup.js';
 import * as InhibitShortcutsDialog from './inhibitShortcutsDialog.js';
 import * as ModalDialog from './modalDialog.js';
 import * as WindowMenu from './windowMenu.js';
@@ -1867,18 +1866,8 @@ export class WindowManager {
         else
             this.actionMoveWindow(window, newWs);
 
-        if (!Main.overview.visible) {
-            if (this._workspaceSwitcherPopup == null) {
-                this.blockWorkspaceUpdates();
-                this._workspaceSwitcherPopup = new WorkspaceSwitcherPopup.WorkspaceSwitcherPopup();
-                this._workspaceSwitcherPopup.connect('destroy', () => {
-                    this.unblockWorkspaceUpdates();
-                    this._workspaceSwitcherPopup = null;
-                    this._isWorkspacePrepended = false;
-                });
-            }
-            this._workspaceSwitcherPopup.display(newWs.index());
-        }
+        // No switcher popup: Tessera shows the workspace's name on every
+        // switch (dock/workspaceName.js)
     }
 
     actionMoveWorkspace(workspace) {

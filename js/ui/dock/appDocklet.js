@@ -78,6 +78,10 @@ export const AppDocklet = GObject.registerClass({
             !!appInfo && (appInfo.supports_uris() || appInfo.supports_files());
     }
 
+    dropFiles(uris) {
+        this.launch(uris);
+    }
+
     setSettings(settings) {
         this.settings = settings;
         this._updateIcon();

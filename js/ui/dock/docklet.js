@@ -57,6 +57,19 @@ export const Docklet = GObject.registerClass({
     tick() {
     }
 
+    /** Whether files dragged from apps can be dropped on the tile. */
+    get acceptsFiles() {
+        return false;
+    }
+
+    /**
+     * Called with the files dropped on the tile.
+     *
+     * @param {string[]} _uris
+     */
+    dropFiles(_uris) {
+    }
+
     _syncTimer() {
         if (this.mapped && this.interval > 0)
             this._startTimer();

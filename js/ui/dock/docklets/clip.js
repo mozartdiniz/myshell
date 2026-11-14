@@ -6,13 +6,12 @@ import Meta from 'gi://Meta';
 import Pango from 'gi://Pango';
 import St from 'gi://St';
 
-import * as Dialog from '../../dialog.js';
 import * as Main from '../../main.js';
-import * as ModalDialog from '../../modalDialog.js';
 import * as PopupMenu from '../../popupMenu.js';
-import * as ShellEntry from '../../shellEntry.js';
 import {Applet} from '../applet.js';
 import {MAX_WORKSPACES} from '../fixedWorkspaces.js';
+import {renameWorkspace} from '../nameDialog.js';
+import {saveSet} from '../workspaceSets.js';
 import {ACCENT, FG} from './meter.js';
 
 const WM_PREFS_SCHEMA = 'org.gnome.desktop.wm.preferences';
@@ -31,7 +30,8 @@ const HOVER_TIME = 600;
  *
  * Click toggles Focus mode, Ctrl+click spreads out the windows
  * (Exposé), middle-click collapses or expands the Clip's icons, and
- * right-click opens the menu.
+ * right-click opens the menu. An image dropped on it becomes the
+ * workspace's wallpaper; the menu also saves and opens workspace sets.
  */
 export const ClipDocklet = GObject.registerClass(
 class ClipDocklet extends Applet {
@@ -114,6 +114,22 @@ class ClipDocklet extends Applet {
     // Ctrl+click is Exposé here; the menu is on right-click
     get ctrlClickOpensMenu() {
         return false;
+    }
+
+    get acceptsFiles() {
+        return true;
+    }
+
+    /** The first image dropped becomes the workspace's wallpaper. */
+    dropFiles(uris) {
+        const uri = uris.find(u => {
+            const [type] = Gio.content_type_guess(u, null);
+            return Gio.content_type_is_mime_type(type, 'image/*');
+        });
+        if (uri) {
+            Main.workspaceBackgrounds.set(
+                global.workspace_manager.get_active_workspace_index(), uri);
+        }
     }
 
     /**
@@ -226,13 +242,33 @@ class ClipDocklet extends Applet {
         const clip = Main.dock.clip;
         const wm = global.workspace_manager;
         const n = wm.n_workspaces;
+        const index = wm.get_active_workspace_index();
 
-        menu.addAction(_('Rename Workspace…'), () => this._rename());
+        menu.addAction(_('Rename Workspace…'), () => renameWorkspace(index));
+        menu.addAction(_('Wallpaper…'), () => Main.workspaceBackgrounds.choose(index));
+        if (Main.workspaceBackgrounds.uriFor(index)) {
+            menu.addAction(_('Use the Desktop’s Wallpaper'),
+                () => Main.workspaceBackgrounds.set(index, null));
+        }
         const add = menu.addAction(_('New Workspace'), () => Main.fixedWorkspaces.add(true));
         add.setSensitive(n < MAX_WORKSPACES);
         const remove = menu.addAction(_('Delete Last Workspace'),
             () => Main.fixedWorkspaces.removeLast());
         remove.setSensitive(n > 1);
+
+        menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Sets')));
+        menu.addAction(_('Save Workspace as Set…'), () => saveSet(index));
+        const sets = Main.workspaceSets.names;
+        if (sets.length) {
+            const open = new PopupMenu.PopupSubMenuMenuItem(_('Open Set'));
+            for (const name of sets)
+                open.menu.addAction(name, () => Main.workspaceSets.restore(name));
+            menu.addMenuItem(open);
+            const del = new PopupMenu.PopupSubMenuMenuItem(_('Delete Set'));
+            for (const name of sets)
+                del.menu.addAction(name, () => Main.workspaceSets.remove(name));
+            menu.addMenuItem(del);
+        }
 
         menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         const focus = new PopupMenu.PopupSwitchMenuItem(_('Focus Mode'), clip.focusActive);
@@ -252,13 +288,6 @@ class ClipDocklet extends Applet {
         menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Focus Mode')));
         this.addToggle(menu, _('Turn On When a Window Is Maximized'), 'focusOnMaximize');
         this.addToggle(menu, _('Peek at Hidden Tiles from the Edge'), 'peek');
-    }
-
-    _rename() {
-        const index = global.workspace_manager.get_active_workspace_index();
-        const dialog = new RenameDialog(Meta.prefs_get_workspace_name(index),
-            name => Meta.prefs_change_workspace_name(index, name));
-        dialog.open();
     }
 
     _tooltipText() {
@@ -301,47 +330,5 @@ class ClipDocklet extends Applet {
         cr.setSourceRGBA(...color, 0.9);
         cr.fill();
         cr.$dispose();
-    }
-});
-
-const RenameDialog = GObject.registerClass(
-class RenameDialog extends ModalDialog.ModalDialog {
-    /**
-     * @param {string} name - the workspace's name now
-     * @param {function(string): void} onRename
-     */
-    _init(name, onRename) {
-        super._init({styleClass: 'clip-rename-dialog'});
-
-        const content = new Dialog.MessageDialogContent({
-            title: _('Rename Workspace'),
-            description: _('Leave it empty for the default name.'),
-        });
-        this.contentLayout.add_child(content);
-
-        const entry = new St.Entry({
-            text: name,
-            can_focus: true,
-            x_expand: true,
-        });
-        ShellEntry.addContextMenu(entry);
-        content.add_child(entry);
-
-        const rename = () => {
-            onRename(entry.text.trim());
-            this.close();
-        };
-        entry.clutter_text.connect('activate', rename);
-        this.setButtons([{
-            label: _('Cancel'),
-            action: () => this.close(),
-            key: Clutter.KEY_Escape,
-        }, {
-            label: _('Rename'),
-            action: rename,
-            default: true,
-        }]);
-        this.setInitialKeyFocus(entry);
-        entry.clutter_text.set_selection(0, -1);
     }
 });

@@ -27,6 +27,9 @@ import * as Dock from './dock/dockManager.js';
 import * as FixedWorkspaces from './dock/fixedWorkspaces.js';
 import * as Launcher from './dock/launcher.js';
 import * as RootMenu from './dock/rootMenu.js';
+import * as WorkspaceBackgrounds from './dock/workspaceBackgrounds.js';
+import * as WorkspaceName from './dock/workspaceName.js';
+import * as WorkspaceSets from './dock/workspaceSets.js';
 import * as InputSourceManager from './status/keyboard.js';
 import * as PadOsd from './padOsd.js';
 import * as Panel from './panel.js';
@@ -68,6 +71,8 @@ export let rootMenu = null;
 export let launcher = null;
 export let overview = null;
 export let fixedWorkspaces = null;
+export let workspaceBackgrounds = null;
+export let workspaceSets = null;
 export let runDialog = null;
 export let lookingGlass = null;
 export let welcomeDialog = null;
@@ -286,6 +291,8 @@ async function _initializeUI() {
         loop.run();
     });
 
+    // Before the desktop's backgrounds are made, which ask it
+    workspaceBackgrounds = new WorkspaceBackgrounds.WorkspaceBackgrounds();
     layoutManager.init();
     overview.init();
 
@@ -299,6 +306,8 @@ async function _initializeUI() {
     layoutManager.uiGroup.insert_child_below(layoutManager.panelBox, null);
     layoutManager.panelBox.hide();
     fixedWorkspaces = new FixedWorkspaces.FixedWorkspaces();
+    workspaceSets = new WorkspaceSets.WorkspaceSets();
+    new WorkspaceName.WorkspaceName();
     dock = new Dock.DockManager();
     launcher = new Launcher.Launcher();
     rootMenu = new RootMenu.RootMenu();
