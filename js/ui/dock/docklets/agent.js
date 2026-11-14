@@ -97,7 +97,7 @@ function framesFor(state) {
 
 /** Where hooks leave each tile's latest event, with the hook script. */
 function stateDir() {
-    return GLib.build_filenamev([GLib.get_user_runtime_dir(), 'myshell-agents']);
+    return GLib.build_filenamev([GLib.get_user_runtime_dir(), 'tessera-agents']);
 }
 
 /**

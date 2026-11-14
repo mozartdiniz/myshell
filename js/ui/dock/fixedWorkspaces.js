@@ -11,15 +11,15 @@ export const MAX_WORKSPACES = 36;
  * A fixed number of workspaces, as in WindowMaker: they are only added
  * and removed on request, so per-workspace state like the Clip's icons
  * stays put. GNOME's dynamic-workspaces setting is shared with the
- * stock session, so it is left alone: while it is on, MyShell keeps
- * the count itself in $XDG_CONFIG_HOME/myshell/workspaces.json (and
+ * stock session, so it is left alone: while it is on, Tessera keeps
+ * the count itself in $XDG_CONFIG_HOME/tessera/workspaces.json (and
  * WorkspaceTracker doesn't add or remove any); while it is off,
  * mutter's num-workspaces is the count.
  */
 export class FixedWorkspaces {
     constructor() {
         this._file = Gio.File.new_for_path(GLib.build_filenamev(
-            [GLib.get_user_config_dir(), 'myshell', 'workspaces.json']));
+            [GLib.get_user_config_dir(), 'tessera', 'workspaces.json']));
         this._wmPrefs = new Gio.Settings({schema_id: WM_PREFS_SCHEMA});
 
         const wm = global.workspace_manager;

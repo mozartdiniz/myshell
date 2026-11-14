@@ -1,5 +1,5 @@
 #!/bin/sh
-# Started by org.gnome.Shell@myshell.service; exec keeps the PID so
+# Started by org.gnome.Shell@tessera.service; exec keeps the PID so
 # systemd's Type=notify readiness still works.
 PREFIX="@PREFIX@"
 export XDG_DATA_DIRS="$PREFIX/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"

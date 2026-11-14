@@ -15,7 +15,7 @@ import GLib from 'gi://GLib';
  */
 export function chooseFile(title, params = {}) {
     const bus = Gio.DBus.session;
-    const token = `myshell_chooser_${GLib.random_int()}`;
+    const token = `tessera_chooser_${GLib.random_int()}`;
     const sender = bus.get_unique_name().slice(1).replaceAll('.', '_');
     const handle = `/org/freedesktop/portal/desktop/request/${sender}/${token}`;
 

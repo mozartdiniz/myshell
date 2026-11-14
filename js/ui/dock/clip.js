@@ -36,7 +36,7 @@ const LEAVE_MARGIN = TILE_SIZE / 2;
  * at that edge's hidden tiles.
  *
  * Which tiles are clipped, and where Focus mode is on, live in
- * $XDG_CONFIG_HOME/myshell/clip.json; the Clip applet's own settings
+ * $XDG_CONFIG_HOME/tessera/clip.json; the Clip applet's own settings
  * hold its options.
  */
 export class Clip {
@@ -44,7 +44,7 @@ export class Clip {
     constructor(dock) {
         this._dock = dock;
         this._file = Gio.File.new_for_path(GLib.build_filenamev(
-            [GLib.get_user_config_dir(), 'myshell', 'clip.json']));
+            [GLib.get_user_config_dir(), 'tessera', 'clip.json']));
         const state = this._load();
         /** @type {{id: string, workspace: number}[]} in strip order */
         this._members = Array.isArray(state.members)

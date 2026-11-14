@@ -1,9 +1,0 @@
-[Desktop Entry]
-Name=MyShell
-Comment=GNOME session running the MyShell fork of GNOME Shell
-Exec=gnome-session --session myshell
-TryExec=gnome-session
-Type=Application
-DesktopNames=MyShell;GNOME;
-X-GDM-SessionRegisters=true
-X-GDM-CanRunHeadless=true

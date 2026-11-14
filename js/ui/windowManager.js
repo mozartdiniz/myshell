@@ -223,7 +223,7 @@ class WorkspaceTracker {
         let i;
         const emptyWorkspaces = [];
 
-        // MyShell keeps a fixed set of workspaces (dock/fixedWorkspaces.js)
+        // Tessera keeps a fixed set of workspaces (dock/fixedWorkspaces.js)
         if (!Meta.prefs_get_dynamic_workspaces() || Main.fixedWorkspaces) {
             this._checkWorkspacesId = 0;
             return GLib.SOURCE_REMOVE;

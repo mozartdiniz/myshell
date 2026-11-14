@@ -627,7 +627,7 @@ export class RootMenu {
         const actions = SystemActions.getDefault();
         return {
             id: 'root',
-            title: _('MyShell'),
+            title: _('Tessera'),
             items: () => [
                 {label: _('Workspaces'), submenu: () => this._workspacesDef()},
                 {label: _('Workspace'), submenu: () => this._workspaceDef()},

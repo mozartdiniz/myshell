@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Tessera
+Comment=GNOME session running the Tessera fork of GNOME Shell
+Exec=gnome-session --session tessera
+TryExec=gnome-session
+Type=Application
+DesktopNames=Tessera;GNOME;
+X-GDM-SessionRegisters=true
+X-GDM-CanRunHeadless=true

@@ -1,136 +1,88 @@
-# GNOME Shell
+# Tessera
 
-GNOME Shell provides core user interface functions for the GNOME desktop,
-like switching to windows and launching applications. GNOME Shell takes
-advantage of the capabilities of modern graphics hardware and introduces
-innovative user interface concepts to provide a visually attractive and
-easy-to-use experience.
+A WindowMaker-style desktop for GNOME, built as a fork of GNOME Shell 51.
+The top panel and the overview are gone. Instead, every app, applet and
+control is a tile that docks to the nearest screen edge, wherever you drop
+it. Each tile is one piece of the mosaic: a *tessera*.
 
-All interactions with the project should follow the [Code of Conduct][conduct].
+It installs next to stock GNOME as its own login session, so you pick it on
+the login screen and can always go back.
 
-[conduct]: https://conduct.gnome.org/
+## What's in it
 
-## Supported versions
+- **Tiles on every edge.** Drag any tile anywhere; it snaps to the nearest
+  edge and keeps its spot. Edges with tiles reserve their space, so
+  maximized windows stay clear of them. Pinned and running apps have tiles;
+  click to raise or hide an app, and drop files on a tile to open them.
+- **Applets**, added from the launcher's Applets tab or the desktop menu:
+  System (quick settings, lock, log out), Clock, Date, Timer, Weather,
+  Figaro (music), Claude Usage, Claude Agent, Notifications, Caffeine,
+  Color Picker, CPU, Memory, Network, Volume, Battery, Workspaces, Folder,
+  Eyes, Trash, and the Clip.
+- **The Clip**, as in WindowMaker. It switches workspaces (arrows in its
+  corners, or scroll) and holds icons per workspace. Its extra:
+  - **Click** for Focus mode: every tile outside the Clip slides away and
+    gives its space to the windows. It can turn on by itself when a window
+    is maximized, and pushing the pointer against an edge peeks at it.
+  - **Ctrl+click** for Exposé: the workspace's windows spread out to pick
+    one.
+  - **Middle-click** collapses its icons; **right-click** for its menu.
+- **Launcher** with search on Super (all apps with Super+A), and a
+  WindowMaker **root menu** on a right-click on the desktop. A middle-click
+  on the desktop, or Super+F11, lists every window.
+- **Fixed workspaces**, as in WindowMaker. Stock GNOME keeps its dynamic
+  ones.
 
-Upstream gnome-shell only supports the most recent stable release series,
-the previous stable release series, and the current development release
-series. Any older stable release series are no longer supported, although
-they may still receive backported security updates in long-term support
-distributions. Such support is up to the distributions, though.
+| Shortcut | |
+|---|---|
+| Super | Launcher |
+| Super+A | All apps |
+| Super+S | Quick settings |
+| Super+Z | Focus mode |
+| Super+E | Exposé |
+| Super+F11 | Window list |
 
-Please refer to the [schedule] to see when a new version will be released.
+## Install
 
-[schedule]: https://release.gnome.org/calendar
+Tessera needs **Fedora with GNOME 51** (Fedora 45).
 
-## Reporting bugs
+```sh
+git clone https://github.com/mozartdiniz/tessera.git
+cd tessera
+./install.sh
+```
 
-Bugs should be reported to the [issue tracking system][bug-tracker].
+The script installs the build dependencies with dnf, builds Tessera into
+`~/.local/tessera` and adds the **Tessera** session to the login screen; it
+asks for your password once. Then log out, click your name, pick
+**Tessera** with the gear button at the bottom right, and log in.
 
-The [GNOME handbook][bug-handbook] has useful information for creating
-effective issue reports.
+- **Update:** `git pull && ./install.sh --no-deps`, then log out and in.
+- **Uninstall:** `./install.sh --uninstall`. Your settings stay in
+  `~/.config/tessera`.
 
-If you are using extensions, please confirm that an issue still happens
-without extensions. To properly disable extensions, you can use the
-[extensions-app] and then restart your session. Disabling extensions
-without a restart is not sufficient to rule out extensions as the
-cause of a bug. If an issue can only be reproduced with a certain
-extension, please file an issue report against that extension first.
+If Tessera doesn't start, log in with GNOME instead and look at its log:
+`journalctl --user -b -u org.gnome.Shell@tessera.service`.
 
-Please note that the issue tracker is meant to be used for
-actionable issues only.
+## Settings
 
-For support questions, feedback on changes or general discussions,
-you can use:
+Everything lives in `~/.config/tessera`: the tile layout (`tiles.json`),
+the applets and their settings (`applets.json`), pinned app tiles
+(`app-tiles.json`), the Clip (`clip.json`) and the number of workspaces
+(`workspaces.json`). Copy the folder to take your desktop to another
+machine.
 
- - the [#gnome-shell matrix room][matrix-room]
- - the `Desktop` category or `shell` tag on [GNOME Discourse][discourse]
+## Hacking
 
-[bug-tracker]: https://gitlab.gnome.org/GNOME/gnome-shell/issues
-[bug-handbook]: https://handbook.gnome.org/issues/reporting.html
-[extensions-app]: https://apps.gnome.org/Extensions
-[matrix-room]: https://matrix.to/#/#gnome-shell:gnome.org
-[discourse]: https://discourse.gnome.org
+`./run-nested.sh` builds, installs and runs Tessera in a window inside
+your current session (`SIZE=1366x768 ./run-nested.sh` for another size).
+It needs `sudo dnf install mutter-devkit`, and it shares `~/.local/tessera`
+and `~/.config/tessera` with the real session. The tiles are in
+`js/ui/dock/`; the applets in `js/ui/dock/docklets/`.
 
-## Feature requests
-
-gnome-shell is a core component of the GNOME desktop experience.
-As such, any changes in behavior or appearance only happen in
-accordance with the [GNOME design team][design-team].
-
-For major changes, it is best to start a discussion on [discourse]
-and reach out on the [#gnome-design matrix room][design-room],
-and only involve the issue tracker once agreement has been reached.
-
-In particular, mockups must be approved by the design team to be
-considered for implementation.
-
-For enhancements that are limited in scope and well-defined,
-it is acceptable to directly open a feature request.
-
-When in doubt, it is better to ask before opening an issue.
-
-[design-team]: https://gitlab.gnome.org/Teams/Design
-[discourse]: https://discourse.gnome.org
-[design-room]: https://matrix.to/#/#gnome-design:gnome.org
-
-## Contributing
-
-To contribute, open merge requests at https://gitlab.gnome.org/GNOME/gnome-shell.
-
-It can be useful to first look at the [GNOME handbook][mr-handbook].
-
-If a change likely requires discussion beyond code review, it is probably better to
-open an issue first or follow the process for [feature requests](#feature-requests).
-Otherwise, creating a separate issue is not required.
-
-The following guidelines will help your change to be successfully merged:
-
- * Keep the change as small as possible. If you can split it into multiple
-   merge requests, please do so.
- * Use multiple commits. This makes it easier to review and helps to diagnose
-   bugs in the future.
- * Use clear commit messages following the [conventions][commit-messages].
- * Pay attention to the CI results. Merge requests cannot be merged until the
-   CI passes.
-
-There's also a [small guide for newcomers][newcomers-contribution-guide] with
-a few more basic tips and tricks.
-
-[mr-handbook]: https://handbook.gnome.org/development/change-submission.html
-[commit-messages]: docs/commit-messages.md
-[newcomers-contribution-guide]: docs/newcomers-contribution-guide.md
-
-## Documentation
-
- * [Coding style and conventions for JavaScript][js-style]
- * [Coding style and conventions for C code][c-style]
- * [The GJS Developer Guide][gjs-guide]
- * [Building and Running][building]
- * [Debugging][debugging]
-
-[js-style]: docs/js-coding-style.md
-[c-style]: docs/c-coding-style.md
-[gjs-guide]: https://gjs.guide
-[building]: docs/building-and-running.md
-[debugging]: docs/debugging.md
-
-## API Reference
-
- * [Meta][meta-docs]: Display server and window manager
- * [St][st-docs]: Shell toolkit
- * [Clutter][clutter-docs]: OpenGL based scene graph
- * [Shell][shell-docs]: Non-ui shell objects and utilities
- * See the [mutter page][mutter-docs] for additional documentation
-
-[st-docs]: <https://gnome.pages.gitlab.gnome.org/gnome-shell/st/>
-[shell-docs]: <https://gnome.pages.gitlab.gnome.org/gnome-shell/shell/>
-[clutter-docs]: <https://mutter.gnome.org/clutter/>
-[meta-docs]: <https://mutter.gnome.org/meta/>
-[mutter-docs]: <https://mutter.gnome.org>
+The upstream GNOME Shell README is in
+[docs/upstream-README.md](docs/upstream-README.md).
 
 ## License
 
-GNOME Shell is distributed under the terms of the GNU General Public License,
-version 2 or later. See the [COPYING][license] file for details.
-
-[license]: COPYING
+GPL-2.0-or-later, as GNOME Shell; see [COPYING](COPYING).

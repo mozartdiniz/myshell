@@ -29,7 +29,7 @@ const URI_LIST = 'text/uri-list';
  * position along that edge where it was dropped (snapped to a
  * TILE_SIZE grid so tiles line up). Occupied slots push the tile to
  * the closest free one. Layout is persisted to
- * $XDG_CONFIG_HOME/myshell/tiles.json.
+ * $XDG_CONFIG_HOME/tessera/tiles.json.
  *
  * A placement is {edge, slot, depth}: `slot` counts tiles along the
  * edge from the top/left, `depth` counts tiles away from the edge.
@@ -55,7 +55,7 @@ export class DockManager extends Signals.EventEmitter {
         /** @type {Map<string, import('./docklet.js').Docklet>} */
         this._tiles = new Map();
 
-        const configDir = GLib.build_filenamev([GLib.get_user_config_dir(), 'myshell']);
+        const configDir = GLib.build_filenamev([GLib.get_user_config_dir(), 'tessera']);
         this._stateFile = Gio.File.new_for_path(
             GLib.build_filenamev([configDir, 'tiles.json']));
         this._appletsFile = Gio.File.new_for_path(
