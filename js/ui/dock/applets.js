@@ -2,6 +2,7 @@ import {AgentDocklet} from './docklets/agent.js';
 import {BatteryDocklet} from './docklets/battery.js';
 import {CaffeineDocklet} from './docklets/caffeine.js';
 import {ClaudeDocklet} from './docklets/claude.js';
+import {ClipDocklet} from './docklets/clip.js';
 import {ClockDocklet} from './docklets/clock.js';
 import {ColorPickerDocklet} from './docklets/colorPicker.js';
 import {CpuDocklet} from './docklets/cpu.js';
@@ -138,6 +139,13 @@ export const APPLETS = [
         description: _('Charge level and time remaining'),
         icon: 'battery-good-symbolic',
         type: BatteryDocklet,
+    },
+    {
+        id: 'clip',
+        name: _('Clip'),
+        description: _('Workspace switcher with its own icons; hides the other tiles to save space'),
+        icon: 'mail-attachment-symbolic',
+        type: ClipDocklet,
     },
     {
         id: 'workspaces',

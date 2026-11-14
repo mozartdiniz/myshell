@@ -10,13 +10,16 @@ import * as Main from '../main.js';
 import * as Signals from '../../misc/signals.js';
 import {AppDocklet, launchApp} from './appDocklet.js';
 import {APPLETS, DEFAULT_APPLETS, appletInfo} from './applets.js';
+import {CLIP_ID, Clip} from './clip.js';
 import {TILE_SIZE} from './docklet.js';
+import {Expose} from './expose.js';
 
 export const EDGES = ['left', 'right', 'top', 'bottom'];
 
 const DEFAULT_APP_EDGE = 'right';
 const DEFAULT_APPLET_EDGE = 'left';
 const SNAP_TIME = 150;
+const HIDE_TIME = 200;
 const MAX_DEPTH = 4;
 const URI_LIST = 'text/uri-list';
 
@@ -39,6 +42,11 @@ const URI_LIST = 'text/uri-list';
  * Each edge with tiles reserves a strut as deep as its tiles reach, so
  * maximized windows stay clear of the docks, as in WindowMaker. Files
  * dragged from an app can be dropped on an app tile to open them.
+ *
+ * While the Clip applet is shown (see clip.js), the tiles clipped to
+ * the current workspace line up next to it and other clipped tiles
+ * hide; in Focus mode every tile outside the Clip hides too, and
+ * hidden tiles reserve no space.
  */
 export class DockManager extends Signals.EventEmitter {
     constructor() {
@@ -64,6 +72,17 @@ export class DockManager extends Signals.EventEmitter {
         /** edge → invisible chrome actor that reserves the strut */
         this._struts = new Map();
         this._strutsId = 0;
+
+        this._dragging = null;
+        this._populating = false;
+        this._refreshId = 0;
+        this._wasCollapsed = false;
+        // Tiles go with uiGroup on shutdown; don't make new ones then
+        this._shuttingDown = false;
+        Main.layoutManager.uiGroup.connectObject('destroy',
+            () => (this._shuttingDown = true), this);
+        this.clip = new Clip(this);
+        this.expose = new Expose();
 
         this._dropTile = null;
         this._dropUris = null;
@@ -101,13 +120,16 @@ export class DockManager extends Signals.EventEmitter {
             return;
         if (this._populated) {
             this._relayoutAll();
-            this._queueUpdateStruts();
+            this.syncLayout(false);
             return;
         }
         this._populated = true;
+        this._populating = true;
         for (const id of this._enabledApplets)
             this._addApplet(id);
         this._syncAppTiles();
+        this._populating = false;
+        this.syncLayout(false);
     }
 
     // ---- geometry ---------------------------------------------------
@@ -164,10 +186,15 @@ export class DockManager extends Signals.EventEmitter {
         return Math.max(0, Math.min(this._slotsAlong(edge) - 1, slot));
     }
 
-    _isFree(placement, except = null) {
+    /**
+     * @param {object} placement
+     * @param {Docklet} [except] - a tile that doesn't count
+     * @param {function(Docklet): boolean} [ignore] - more tiles that don't
+     */
+    _isFree(placement, except = null, ignore = null) {
         const [x, y] = this._placementToPosition(placement);
         for (const tile of this._tiles.values()) {
-            if (tile === except || !tile.placement)
+            if (tile === except || !tile.placement || ignore?.(tile))
                 continue;
             const [tx, ty] = this._placementToPosition(tile.placement);
             if (Math.abs(tx - x) < TILE_SIZE && Math.abs(ty - y) < TILE_SIZE)
@@ -218,7 +245,8 @@ export class DockManager extends Signals.EventEmitter {
 
     _relayoutAll() {
         for (const tile of this._tiles.values()) {
-            if (!tile.placement)
+            // The Clip places its own
+            if (!tile.placement || this.clip.isMember(tile.id))
                 continue;
             const p = {...tile.placement};
             p.slot = this._clampSlot(p.edge, p.slot);
@@ -240,8 +268,9 @@ export class DockManager extends Signals.EventEmitter {
     _updateStruts() {
         const m = this._monitor();
         for (const edge of EDGES) {
+            // Hidden and peeking tiles leave the space to the windows
             const depths = this.tiles
-                .filter(t => t.placement?.edge === edge)
+                .filter(t => t.placement?.edge === edge && !t.dockHidden && !t.dockPeek)
                 .map(t => t.placement.depth + 1);
             const thickness = depths.length ? Math.max(...depths) * TILE_SIZE : 0;
             let strut = this._struts.get(edge);
@@ -280,7 +309,7 @@ export class DockManager extends Signals.EventEmitter {
      */
     arrangeTiles() {
         const byEdge = EDGES.map(edge => this.tiles
-            .filter(t => t.placement?.edge === edge)
+            .filter(t => t.placement?.edge === edge && !this.clip.isMember(t.id))
             .sort((a, b) => a.placement.depth - b.placement.depth ||
                 a.placement.slot - b.placement.slot));
         // Unplaced tiles don't block the free-slot search
@@ -294,27 +323,48 @@ export class DockManager extends Signals.EventEmitter {
                 slot = placement.slot + 1;
             }
         });
-        this._queueUpdateStruts();
+        this.syncLayout();
         this._queueSave();
     }
 
     // ---- tiles ------------------------------------------------------
 
     _addTile(tile, fallback) {
-        const wanted = this._layout.get(tile.id) ?? fallback;
         Main.layoutManager.addChrome(tile, {
             affectsStruts: false,
             trackFullscreen: true,
         });
         this._tiles.set(tile.id, tile);
-        this._place(tile, this._nearestFree(wanted, tile) ?? wanted);
+        if (this.clip.isMember(tile.id)) {
+            // syncLayout() lines it up next to the Clip
+            tile.dockHidden = true;
+            tile.opacity = 0;
+            Main.layoutManager.updateChromeVisibility(tile);
+        } else {
+            const wanted = this._layout.get(tile.id) ?? fallback;
+            this._place(tile, this._nearestFree(wanted, tile) ?? wanted);
+        }
 
-        tile.connect('drag-end', (t, x, y) => this._onTileDropped(t, x, y));
+        tile.connect('drag-begin', () => (this._dragging = tile));
+        tile.connect('drag-end', (t, x, y) => {
+            this._dragging = null;
+            this._onTileDropped(t, x, y);
+        });
         tile.connect('destroy', () => {
             this._tiles.delete(tile.id);
+            if (this._dragging === tile)
+                this._dragging = null;
+            this.clip.tileDestroyed(tile.id);
+            // Its icons go back to the dock, unless this is shutdown
+            if (tile.id === CLIP_ID) {
+                this.clip.detach();
+                this._queueRefresh();
+            }
             this._queueUpdateStruts();
         });
-        this._queueUpdateStruts();
+        if (tile.id === CLIP_ID)
+            this.clip.attach(tile);
+        this.syncLayout();
         this._queueSave();
     }
 
@@ -326,9 +376,20 @@ export class DockManager extends Signals.EventEmitter {
     }
 
     _onTileDropped(tile, x, y) {
+        const index = this._clipDropIndex(tile, x, y);
+        if (index >= 0) {
+            const strip = this._shownStrip(tile);
+            const workspace = this.clip.workspaceOf(tile.id) ??
+                global.workspace_manager.get_active_workspace_index();
+            this.clip.add(tile.id, workspace, strip[index]?.id ?? null);
+            return;
+        }
+        // Dragged out of the Clip
+        if (this.clip.isMember(tile.id))
+            this.clip.remove(tile.id, false);
         const wanted = this._positionToPlacement(x, y);
-        this._place(tile, this._nearestFree(wanted, tile) ?? tile.placement, true);
-        this._queueUpdateStruts();
+        this._place(tile, this._nearestFree(wanted, tile) ?? tile.placement ?? wanted, true);
+        this.refresh();
         this._queueSave();
     }
 
@@ -344,15 +405,23 @@ export class DockManager extends Signals.EventEmitter {
      * pinned from its menu.
      */
     _syncAppTiles() {
-        if (!this._populated)
+        if (!this._populated || this._shuttingDown || !this._monitor())
             return;
         const appSystem = Shell.AppSystem.get_default();
         const wanted = new Map();
         for (const app of this._favorites.getFavorites())
             wanted.set(app.get_id(), app);
+        // So do the apps in the Clip
+        for (const appId of this.clip.appIds()) {
+            const app = appSystem.lookup_app(appId);
+            if (app)
+                wanted.set(appId, app);
+        }
         // Running apps get a tile unless an applet stands in for them
         const claimed = new Set(this.tiles.flatMap(t => t.claimedAppIds ?? []));
-        for (const app of appSystem.get_running()) {
+        const running = appSystem.get_running();
+        this.clip.pruneApps(new Set(running.map(app => app.get_id())));
+        for (const app of running) {
             if (!claimed.has(app.get_id()))
                 wanted.set(app.get_id(), app);
         }
@@ -374,8 +443,13 @@ export class DockManager extends Signals.EventEmitter {
                     delete this._appSettings[appId];
                 this._queueSave();
             });
+            // A temporary tile may go in the Clip instead
+            if (!this._pinnedIds.has(appId) && !this.clip.isMember(tile.id) &&
+                app.state !== Shell.AppState.STOPPED && this.clip.shouldAttract(app))
+                this.clip.attract(tile.id, app);
             this._addTile(tile, this._firstFree(DEFAULT_APP_EDGE));
         }
+        this.syncLayout();
     }
 
     _pinnedAppIds() {
@@ -408,6 +482,252 @@ export class DockManager extends Signals.EventEmitter {
             else
                 launchApp(app, settings);
         }
+    }
+
+    // ---- the Clip ---------------------------------------------------
+
+    /** @returns {Docklet|null} */
+    tileById(id) {
+        return this._tiles.get(id) ?? null;
+    }
+
+    /** Whether a tile is being dragged. */
+    get dragging() {
+        return !!this._dragging;
+    }
+
+    /** Screen rectangle of a tile's placement. */
+    tileRect(tile) {
+        const [x, y] = tile.placement
+            ? this._placementToPosition(tile.placement) : [tile.x, tile.y];
+        return {x, y, width: TILE_SIZE, height: TILE_SIZE};
+    }
+
+    /** The band along `edge` as deep as its tiles reach. */
+    edgeBand(edge) {
+        const m = this._monitor();
+        const depth = TILE_SIZE * Math.max(1, ...this.tiles
+            .filter(t => t.placement?.edge === edge)
+            .map(t => t.placement.depth + 1));
+        switch (edge) {
+        case 'left':
+            return {x: m.x, y: m.y, width: depth, height: m.height};
+        case 'right':
+            return {x: m.x + m.width - depth, y: m.y, width: depth, height: m.height};
+        case 'top':
+            return {x: m.x, y: m.y, width: m.width, height: depth};
+        default:
+            return {x: m.x, y: m.y + m.height - depth, width: m.width, height: depth};
+        }
+    }
+
+    /** Bring app tiles and the layout up to date with the Clip. */
+    refresh() {
+        this._syncAppTiles();
+        this.syncLayout();
+    }
+
+    _queueRefresh() {
+        if (this._refreshId || this._shuttingDown)
+            return;
+        this._refreshId = GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+            this._refreshId = 0;
+            this.refresh();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    /**
+     * Place and show the tiles as the Clip says: its icons for the
+     * current workspace line up next to it, its other icons hide, and
+     * in Focus mode so does every tile outside it but those on the
+     * edge being peeked at.
+     *
+     * @param {boolean} animate
+     */
+    syncLayout(animate = true) {
+        // The monitor goes before the tiles on shutdown
+        if (!this._populated || this._populating || this._shuttingDown || !this._monitor())
+            return;
+        const clip = this.clip;
+        const clipTile = clip.tile;
+        const members = [], others = [];
+        for (const tile of this._tiles.values())
+            (clip.isMember(tile.id) ? members : others).push(tile);
+
+        // Tiles the Clip let go of go back to their own spot
+        for (const tile of others) {
+            if (tile.placement)
+                continue;
+            const wanted = this._layout.get(tile.id) ??
+                this._firstFree(tile instanceof AppDocklet ? DEFAULT_APP_EDGE : DEFAULT_APPLET_EDGE);
+            this._place(tile, this._nearestFree(wanted, tile) ?? wanted,
+                animate && !tile.dockHidden);
+        }
+
+        const collapsed = clip.collapsed;
+        const expanding = this._wasCollapsed && !collapsed;
+        this._wasCollapsed = collapsed;
+        const strip = clip.stripIds().map(id => this._tiles.get(id)).filter(Boolean);
+        const spots = clipTile && !collapsed
+            ? this._stripPlacements(clipTile.placement, strip.length) : [];
+        const [clipX, clipY] = clipTile
+            ? this._placementToPosition(clipTile.placement) : [0, 0];
+        for (const tile of members) {
+            if (tile === this._dragging)
+                continue;
+            const i = strip.indexOf(tile);
+            const spot = spots[i];
+            if (!spot) {
+                // Collapsing tucks the icons behind the Clip
+                tile.placement = null;
+                const toward = collapsed && i >= 0 ? [clipX - tile.x, clipY - tile.y] : [0, 0];
+                this._setShown(tile, false, toward, animate);
+                continue;
+            }
+            tile.placement = spot;
+            const [x, y] = this._placementToPosition(spot);
+            if (tile.dockHidden) {
+                tile.set_position(x, y);
+                const from = expanding ? [clipX - x, clipY - y] : [0, 0];
+                this._setShown(tile, true, from, animate);
+            } else if (animate) {
+                tile.ease({
+                    x, y,
+                    duration: SNAP_TIME,
+                    mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                });
+            } else {
+                tile.set_position(x, y);
+            }
+        }
+
+        const focus = clip.focusActive;
+        const hiddenEdges = new Set();
+        for (const tile of others) {
+            const away = focus && tile !== clipTile;
+            const peek = away && clip.peekEdge === tile.placement.edge;
+            if (away)
+                hiddenEdges.add(tile.placement.edge);
+            tile.dockPeek = peek;
+            this._setShown(tile, !away || peek, edgeOffset(tile.placement), animate);
+        }
+        clip.syncBarriers([...hiddenEdges]);
+        clipTile?.syncState(focus, collapsed ? strip.length : 0);
+        this._queueUpdateStruts();
+    }
+
+    /**
+     * Show or hide a tile, sliding it from or to `offset` from its spot.
+     *
+     * @param {Docklet} tile
+     * @param {boolean} shown
+     * @param {number[]} offset - [dx, dy]
+     * @param {boolean} animate
+     */
+    _setShown(tile, shown, [dx, dy], animate) {
+        if (!tile.dockHidden === shown)
+            return;
+        tile.dockHidden = !shown;
+        if (!shown) {
+            tile.hideTooltip?.();
+            if (!animate) {
+                tile.opacity = 0;
+                Main.layoutManager.updateChromeVisibility(tile);
+                return;
+            }
+            tile.ease({
+                translation_x: dx,
+                translation_y: dy,
+                opacity: 0,
+                duration: HIDE_TIME,
+                mode: Clutter.AnimationMode.EASE_IN_QUAD,
+                onStopped: () => {
+                    if (tile.dockHidden)
+                        Main.layoutManager.updateChromeVisibility(tile);
+                },
+            });
+            return;
+        }
+
+        Main.layoutManager.updateChromeVisibility(tile);
+        if (!animate) {
+            tile.remove_all_transitions();
+            tile.set({translation_x: 0, translation_y: 0, opacity: 255});
+            return;
+        }
+        // Coming back from fully hidden starts at the offset
+        if (tile.opacity === 0)
+            tile.set({translation_x: dx, translation_y: dy});
+        tile.ease({
+            translation_x: 0,
+            translation_y: 0,
+            opacity: 255,
+            duration: HIDE_TIME,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+        });
+    }
+
+    /**
+     * Spots for `count` Clip icons: along the edge from the Clip toward
+     * its far end, then the rows further out. Other tiles' spots are
+     * skipped, so they never have to move for the Clip, unless Focus
+     * mode hides them: then the icons close up, except while peeking
+     * at the Clip's own edge.
+     *
+     * @param {object} from - the Clip's placement
+     * @param {number} count
+     * @param {Docklet} [except] - a tile whose spot counts as free
+     */
+    _stripPlacements(from, count, except = null) {
+        const {edge} = from;
+        const slots = this._slotsAlong(edge);
+        const step = from.slot < slots / 2 ? 1 : -1;
+        const clip = this.clip;
+        const compact = clip.focusActive && clip.peekEdge !== edge;
+        const ignore = tile => clip.isMember(tile.id) ||
+            (compact && tile !== clip.tile && tile.placement.edge !== clip.peekEdge);
+        const spots = [];
+        for (let depth = from.depth; depth <= MAX_DEPTH && spots.length < count; depth++) {
+            let slot = depth === from.depth ? from.slot + step : from.slot;
+            for (; slot >= 0 && slot < slots && spots.length < count; slot += step) {
+                const p = {edge, slot, depth};
+                if (this._isFree(p, except, ignore))
+                    spots.push(p);
+            }
+        }
+        return spots;
+    }
+
+    /** The Clip's icons showing now, in order, but `except`. */
+    _shownStrip(except) {
+        return this.clip.stripIds().map(id => this._tiles.get(id))
+            .filter(t => t && t !== except && t.placement && !t.dockHidden);
+    }
+
+    /**
+     * Where a tile dropped at x, y goes in the Clip's strip: on the
+     * Clip or after its last icon is the end, on an icon is before it.
+     *
+     * @returns {number} the index, or -1 for a drop outside the Clip
+     */
+    _clipDropIndex(tile, x, y) {
+        const clipTile = this.clip.tile;
+        if (!clipTile || tile === clipTile)
+            return -1;
+        const cx = x + TILE_SIZE / 2, cy = y + TILE_SIZE / 2;
+        const hit = placement => {
+            const [px, py] = this._placementToPosition(placement);
+            return cx >= px && cx < px + TILE_SIZE && cy >= py && cy < py + TILE_SIZE;
+        };
+        const strip = this._shownStrip(tile);
+        if (hit(clipTile.placement))
+            return strip.length;
+        const i = strip.findIndex(t => hit(t.placement));
+        if (i >= 0)
+            return i;
+        const next = this._stripPlacements(clipTile.placement, strip.length + 1, tile)[strip.length];
+        return next && hit(next) ? strip.length : -1;
     }
 
     // ---- files dropped from apps ------------------------------------
@@ -499,6 +819,9 @@ export class DockManager extends Signals.EventEmitter {
             if (info.multiple)
                 delete this._appletSettings[id];
             const tile = this._tiles.get(id);
+            // Out of the Clip too, unless it's the Clip itself
+            if (id !== CLIP_ID)
+                this.clip.remove(id, false);
             if (tile) {
                 this._forgetTile(tile);
                 // A running app it stood in for needs its own tile again
@@ -528,7 +851,8 @@ export class DockManager extends Signals.EventEmitter {
         tile.connect('remove-requested', () => this.setAppletEnabled(id, false));
         tile.connect('claims-changed', () => this._syncAppTiles());
         this._addTile(tile, this._firstFree(DEFAULT_APPLET_EDGE));
-        if (tile.claimedAppIds.length > 0)
+        // The Clip brings the apps clipped to it
+        if (tile.claimedAppIds.length > 0 || id === CLIP_ID)
             this._syncAppTiles();
     }
 
@@ -610,6 +934,17 @@ export class DockManager extends Signals.EventEmitter {
         } catch (e) {
             console.warn(`Failed to save ${file.get_basename()}: ${e.message}`);
         }
+    }
+}
+
+/** Offset that slides a tile at `placement` off its edge. */
+function edgeOffset({edge, depth}) {
+    const d = (depth + 1) * TILE_SIZE;
+    switch (edge) {
+    case 'left': return [-d, 0];
+    case 'right': return [d, 0];
+    case 'top': return [0, -d];
+    default: return [0, d];
     }
 }
 

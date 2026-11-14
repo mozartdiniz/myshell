@@ -191,6 +191,22 @@
         the pointer.
       </description>
     </key>
+    <key name="toggle-focus-mode" type="as">
+      <default>["&lt;Super&gt;z"]</default>
+      <summary>Keybinding to toggle the Clip's Focus mode</summary>
+      <description>
+        Keybinding that hides, or brings back, the dock tiles that are
+        not in the Clip on the current workspace.
+      </description>
+    </key>
+    <key name="toggle-expose" type="as">
+      <default>["&lt;Super&gt;e"]</default>
+      <summary>Keybinding to spread out the windows</summary>
+      <description>
+        Keybinding that spreads out the windows of the current
+        workspace (Exposé) to pick one.
+      </description>
+    </key>
     <key name="focus-active-notification" type="as">
       <default>["&lt;Super&gt;n"]</default>
       <summary>Keybinding to focus the active notification</summary>

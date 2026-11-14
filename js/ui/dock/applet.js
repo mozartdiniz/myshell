@@ -14,8 +14,8 @@ const TOOLTIP_FADE_TIME = 100;
  * A docklet that can be added and removed from the launcher's Applets
  * page. Each applet has a settings object that DockManager persists;
  * right-click or Ctrl+click opens a menu with the applet's settings
- * (from `buildMenu()`) and a Remove item. Plain clicks go to
- * `activate()`.
+ * (from `buildMenu()`), the Clip's items for it and a Remove item.
+ * Plain clicks go to `activate()`.
  */
 export const Applet = GObject.registerClass({
     Signals: {
@@ -44,7 +44,7 @@ export const Applet = GObject.registerClass({
             const event = Clutter.get_current_event();
             const ctrl = event &&
                 (event.get_state() & Clutter.ModifierType.CONTROL_MASK) !== 0;
-            if (button === Clutter.BUTTON_SECONDARY || ctrl)
+            if (button === Clutter.BUTTON_SECONDARY || (ctrl && this.ctrlClickOpensMenu))
                 this.openMenu();
             else
                 this.activate(button);
@@ -71,6 +71,11 @@ export const Applet = GObject.registerClass({
      */
     get claimedAppIds() {
         return [];
+    }
+
+    /** Whether Ctrl+click opens the menu, like right-click. */
+    get ctrlClickOpensMenu() {
+        return true;
     }
 
     /** Default settings; subclasses override. */
@@ -191,6 +196,7 @@ export const Applet = GObject.registerClass({
     openMenu() {
         this.openPopup(menu => {
             this.buildMenu(menu);
+            Main.dock.clip.addTileItems(menu, this);
             if (!menu.isEmpty())
                 menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
             menu.addAction(_('Remove'), () => this.emit('remove-requested'));

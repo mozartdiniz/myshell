@@ -184,6 +184,9 @@ export const AppDocklet = GObject.registerClass({
             const items = this._menu._getMenuItems();
             this._menu.addMenuItem(this._settingsItem,
                 items.indexOf(this._menu._toggleFavoriteItem) + 1);
+            this._clipSection = new PopupMenu.PopupMenuSection();
+            this._menu.addMenuItem(this._clipSection,
+                items.indexOf(this._menu._toggleFavoriteItem) + 2);
 
             Main.uiGroup.add_child(this._menu.actor);
             this._menuManager.addMenu(this._menu);
@@ -191,6 +194,8 @@ export const AppDocklet = GObject.registerClass({
         // Only pinned tiles keep settings
         this._settingsItem.visible = !!this.app.get_app_info() &&
             AppFavorites.getAppFavorites().isFavorite(this.app.get_id());
+        this._clipSection.removeAll();
+        Main.dock.clip.addTileItems(this._clipSection, this);
         this._menu.open();
     }
 

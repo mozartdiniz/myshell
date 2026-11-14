@@ -11,10 +11,10 @@ import * as Main from '../main.js';
 import * as SystemActions from '../../misc/systemActions.js';
 import {findApp} from './applet.js';
 import {APPLETS} from './applets.js';
+import {MAX_WORKSPACES} from './fixedWorkspaces.js';
 
 const KEYBINDINGS_SCHEMA = 'org.gnome.desktop.wm.keybindings';
 const SHELL_KEYBINDINGS_SCHEMA = 'org.gnome.shell.keybindings';
-const WM_PREFS_SCHEMA = 'org.gnome.desktop.wm.preferences';
 const MAX_WORKSPACE_KEYBINDING = 12;
 /** Pointer travel that turns a release into a selection */
 const ARM_DISTANCE = 4;
@@ -285,7 +285,6 @@ export class RootMenu {
         Main.uiGroup.add_child(this._layer);
 
         this._keybindings = new Gio.Settings({schema_id: KEYBINDINGS_SCHEMA});
-        this._wmPrefs = new Gio.Settings({schema_id: WM_PREFS_SCHEMA});
 
         const wm = global.workspace_manager;
         this._activeWorkspace = wm.get_active_workspace_index();
@@ -658,14 +657,16 @@ export class RootMenu {
             items: () => {
                 const wm = global.workspace_manager;
                 const n = wm.n_workspaces;
-                const dynamic = Meta.prefs_get_dynamic_workspaces();
                 const items = [
-                    {label: _('New'), activate: () => this._newWorkspace()},
                     {
-                        // Dynamic workspaces remove empty ones themselves
+                        label: _('New'),
+                        sensitive: n < MAX_WORKSPACES,
+                        activate: () => Main.fixedWorkspaces.add(true),
+                    },
+                    {
                         label: _('Destroy Last'),
-                        sensitive: !dynamic && n > 1,
-                        activate: () => this._wmPrefs.set_int('num-workspaces', n - 1),
+                        sensitive: n > 1,
+                        activate: () => Main.fixedWorkspaces.removeLast(),
                     },
                     {
                         label: _('Last Used'),
@@ -779,21 +780,6 @@ export class RootMenu {
     _activateWorkspace(index) {
         global.workspace_manager.get_workspace_by_index(index)
             ?.activate(global.get_current_time());
-    }
-
-    _newWorkspace() {
-        const wm = global.workspace_manager;
-        if (Meta.prefs_get_dynamic_workspaces()) {
-            // There is always an empty workspace at the end
-            this._activateWorkspace(wm.n_workspaces - 1);
-            return;
-        }
-        const index = wm.n_workspaces;
-        const id = wm.connect('notify::n-workspaces', () => {
-            wm.disconnect(id);
-            this._activateWorkspace(index);
-        });
-        this._wmPrefs.set_int('num-workspaces', index + 1);
     }
 
     _workspaceAccel(index) {

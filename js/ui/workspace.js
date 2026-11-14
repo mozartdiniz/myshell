@@ -142,7 +142,7 @@ export class LayoutStrategy {
     }
 }
 
-class UnalignedLayoutStrategy extends LayoutStrategy {
+export class UnalignedLayoutStrategy extends LayoutStrategy {
     _newRow() {
         // Row properties:
         //

@@ -976,9 +976,24 @@ export const LayoutManager = GObject.registerClass({
             return;
 
         const monitor = this.findMonitorForActor(actorData.actor);
-        actorData.actor.visible = !(global.window_group.visible &&
+        // Dock tiles the Clip hides stay hidden through fullscreen changes
+        actorData.actor.visible = !actorData.actor.dockHidden &&
+                                  !(global.window_group.visible &&
                                     monitor &&
                                     monitor.inFullscreen);
+    }
+
+    /**
+     * Show or hide tracked chrome after its `dockHidden` changed.
+     *
+     * @param {Clutter.Actor} actor
+     */
+    updateChromeVisibility(actor) {
+        const i = this._findActor(actor);
+        if (i >= 0 && this._trackedActors[i].trackFullscreen)
+            this._updateActorVisibility(this._trackedActors[i]);
+        else
+            actor.visible = !actor.dockHidden;
     }
 
     _updateVisibility() {

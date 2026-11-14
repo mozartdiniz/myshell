@@ -527,3 +527,41 @@ $dock_bevel_dark: #151515;
   &:hover { background-color: transparentize($fg_color, 0.85); }
   &:active { background-color: transparentize($fg_color, 0.75); }
 }
+
+/* The Clip */
+.clip-docklet-number {
+  font-size: 20pt;
+  font-weight: bold;
+  font-feature-settings: "tnum";
+}
+
+.clip-docklet-corner {
+  spacing: 1px;
+  margin: 3px 0 0 3px;
+}
+
+.clip-docklet-name {
+  max-width: 40px;
+  margin-bottom: 3px;
+}
+
+// In Focus mode
+.clip-docklet:checked {
+  background-color: #1e1e1e;
+  border-color: $dock_bevel_dark $dock_bevel_light $dock_bevel_light $dock_bevel_dark;
+}
+
+/* Exposé */
+.expose-background {
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+.expose-highlight {
+  border: 3px solid #e0e0e0;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.expose-title {
+  @extend %tooltip;
+}
