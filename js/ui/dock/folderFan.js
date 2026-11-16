@@ -37,6 +37,8 @@ const MAX_ITEMS = 12;
 const OPEN_TIME = 180;
 const STAGGER_TIME = 12;
 const CLOSE_TIME = 100;
+const DROP_TIME = 150;
+const RETURN_TIME = 200;
 
 /**
  * A folder's contents fanned out from its tile, as in the macOS Dock:
@@ -49,6 +51,12 @@ const CLOSE_TIME = 100;
  *
  * It shows on a full-screen layer with a modal grab: a click outside
  * an item, Escape, or clicking the tile again closes it.
+ *
+ * Items can be dragged out, as the fan makes way: onto the desktop
+ * (into the folder icon under them, or where they're dropped), or onto
+ * a tile that takes files, such as another folder, an app or the
+ * Trash. Ctrl copies and Shift moves, as in Files. The shell can't drag
+ * to other apps' windows, so a drop anywhere else takes the item back.
  */
 export class FolderFan {
     /** @param {import('./docklet.js').Docklet} tile */
@@ -56,6 +64,9 @@ export class FolderFan {
         this._tile = tile;
         this._grab = null;
         this._cancellable = null;
+        /** @type {{file: Gio.File, grab: Clutter.Grab, icon: St.Icon, offset: number[]}|null} */
+        this._drag = null;
+        this._dropTile = null;
 
         this._layer = new St.Widget({
             reactive: true,
@@ -91,6 +102,7 @@ export class FolderFan {
     }
 
     destroy() {
+        this._endDrag(false);
         this._cancellable?.cancel();
         this._popModal();
         this._layer?.destroy();
@@ -126,6 +138,7 @@ export class FolderFan {
     }
 
     close() {
+        this._endDrag(false);
         this._cancellable?.cancel();
         this._popModal();
         if (!this._layer)
@@ -198,8 +211,12 @@ export class FolderFan {
             Math.min(MAX_ITEMS, Math.floor((geometry.room - ICON_BOX / 2) / STEP) + 1));
         const shown = entries.slice(0, fits - 1);
 
-        const items = shown.map(entry => this._createItem(entry.name, entry.icon,
-            geometry.labelsLeft, () => launchUri(entry.file.get_uri())));
+        const items = shown.map(entry => {
+            const item = this._createItem(entry.name, entry.icon,
+                geometry.labelsLeft, () => launchUri(entry.file.get_uri()));
+            this._makeDraggable(item, entry.file, entry.icon);
+            return item;
+        });
         const more = entries.length - shown.length;
         const openLabel = more > 0
             /* Translators: %d is how many items didn't fit in the fan */
@@ -287,6 +304,160 @@ export class FolderFan {
         });
         return item;
     }
+
+    // ---- dragging items out --------------------------------------------
+
+    // The drag is the shell's own: the icon follows the pointer over a
+    // grab, and what's under it on release takes the file.
+    _makeDraggable(item, file, gicon) {
+        const pan = new Clutter.PanGesture({begin_threshold: 8});
+        pan.connect('recognize', () => this._beginDrag(item, file, gicon));
+        pan.connect('pan-update', () => this._updateDrag());
+        pan.connect('end', () => this._endDrag(true));
+        pan.connect('cancel', () => this._endDrag(false));
+        item.add_action(pan);
+    }
+
+    _beginDrag(item, file, gicon) {
+        const [px, py] = global.get_pointer();
+        const icon = new St.Icon({
+            style_class: 'folder-fan-icon',
+            gicon,
+            icon_size: ICON_SIZE,
+            reactive: false,
+        });
+        Main.uiGroup.add_child(icon);
+        Main.uiGroup.set_child_above_sibling(icon, null);
+        // Under the pointer where the item's icon was grabbed
+        const [ix, iy] = item.get_child().get_children()
+            .find(c => c instanceof St.Icon).get_transformed_position();
+        const offset = [
+            clampOffset(px - ix - (ICON_BOX - ICON_SIZE) / 2),
+            clampOffset(py - iy - (ICON_BOX - ICON_SIZE) / 2),
+        ];
+        icon.set_position(px - offset[0], py - offset[1]);
+        this._drag = {file, grab: global.stage.grab(item), icon, offset};
+
+        // The fan makes way for the drop
+        for (const child of this._layer.get_children()) {
+            child.reactive = false;
+            child.ease({
+                opacity: 0,
+                duration: CLOSE_TIME,
+                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            });
+        }
+    }
+
+    _updateDrag() {
+        if (!this._drag)
+            return;
+        const [px, py] = global.get_pointer();
+        const {icon, offset} = this._drag;
+        icon.set_position(px - offset[0], py - offset[1]);
+        this._setDropTile(this._tileAt(px, py));
+    }
+
+    _endDrag(released) {
+        const drag = this._drag;
+        if (!drag)
+            return;
+        this._drag = null;
+        drag.grab.dismiss();
+        this._setDropTile(null);
+
+        const [x, y, mods] = global.get_pointer();
+        const dropped = released && this._drop(drag.file, x, y, mods);
+        const {icon} = drag;
+        if (dropped) {
+            icon.set_pivot_point(0.5, 0.5);
+            icon.ease({
+                opacity: 0,
+                scale_x: 0.5,
+                scale_y: 0.5,
+                duration: DROP_TIME,
+                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                onStopped: () => icon.destroy(),
+            });
+        } else {
+            // Back into the folder's tile
+            const [tx, ty] = this._tile.get_transformed_position();
+            const [tw, th] = this._tile.get_transformed_size();
+            icon.ease({
+                x: tx + (tw - ICON_SIZE) / 2,
+                y: ty + (th - ICON_SIZE) / 2,
+                opacity: 0,
+                duration: RETURN_TIME,
+                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                onStopped: () => icon.destroy(),
+            });
+        }
+        this.close();
+    }
+
+    /**
+     * Give `file` to what's at x, y: a tile that takes files, or the
+     * desktop if it's the window there.
+     *
+     * @returns {boolean} whether something took it
+     */
+    _drop(file, x, y, mods) {
+        const uris = [file.get_uri()];
+        const tile = this._tileAt(x, y);
+        if (tile) {
+            tile.dropFiles(uris);
+            return true;
+        }
+        const desktop = Main.desktopIcons;
+        if (desktop?.window && windowAt(x, y) === desktop.window) {
+            let mode = 'default';
+            if (mods & Clutter.ModifierType.CONTROL_MASK)
+                mode = 'copy';
+            else if (mods & Clutter.ModifierType.SHIFT_MASK)
+                mode = 'move';
+            desktop.dropFiles(uris, x, y, mode);
+            return true;
+        }
+        return false;
+    }
+
+    /** A tile other than the folder's own that takes files dropped at x, y. */
+    _tileAt(x, y) {
+        return Main.dock?.tiles.find(t => t !== this._tile && t.acceptsFiles &&
+            t.mapped && contains(t, x, y)) ?? null;
+    }
+
+    _setDropTile(tile) {
+        if (this._dropTile === tile)
+            return;
+        this._dropTile?.remove_style_pseudo_class('drop-target');
+        this._dropTile = tile;
+        tile?.add_style_pseudo_class('drop-target');
+    }
+}
+
+/** Keeps the grabbed point on the dragged icon. */
+function clampOffset(offset) {
+    return Math.clamp(offset, 0, ICON_SIZE);
+}
+
+function contains(actor, x, y) {
+    const [ax, ay] = actor.get_transformed_position();
+    const [w, h] = actor.get_transformed_size();
+    return x >= ax && x < ax + w && y >= ay && y < ay + h;
+}
+
+function rectContains(rect, x, y) {
+    return x >= rect.x && x < rect.x + rect.width && y >= rect.y && y < rect.y + rect.height;
+}
+
+/** @returns {Meta.Window|null} the topmost window at x, y on this workspace */
+function windowAt(x, y) {
+    const workspace = global.workspace_manager.get_active_workspace();
+    return global.get_window_actors().map(a => a.meta_window).reverse()
+        .find(w => !w.minimized && w.showing_on_its_workspace() &&
+            w.located_on_workspace(workspace) &&
+            rectContains(w.get_frame_rect(), x, y)) ?? null;
 }
 
 /**

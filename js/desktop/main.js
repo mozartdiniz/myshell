@@ -121,6 +121,8 @@ class DesktopApplication extends Adw.Application {
         add('paste', '(ii)', ([x, y]) => this._window?.grid.paste(x, y));
         add('new-folder', '(sii)', ([name, x, y]) => this._window?.grid.newFolder(name, x, y));
         add('unselect', null, () => this._window?.grid.unselectAll());
+        add('drop-files', '(asiis)', ([uris, x, y, mode]) => this._window?.grid.dropFiles(
+            uris.map(uri => Gio.File.new_for_uri(uri)), x, y, mode));
         add('quit', null, () => this.quit());
     }
 

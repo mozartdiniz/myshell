@@ -85,6 +85,27 @@ export class DesktopIcons {
         return this._dir;
     }
 
+    /** @returns {Meta.Window|null} the desktop's window, while it shows */
+    get window() {
+        return this._window;
+    }
+
+    /**
+     * Drop files dragged in the shell, such as from a Folder applet's
+     * fan, at x, y on the stage: onto the desktop there, or into the
+     * folder under them.
+     *
+     * @param {string[]} uris
+     * @param {number} x
+     * @param {number} y
+     * @param {string} mode - 'copy', 'move', or 'default' for what a
+     *   plain drag does
+     */
+    dropFiles(uris, x, y, mode) {
+        this._action('drop-files',
+            new GLib.Variant('(asiis)', [uris, ...this._toWindow(x, y), mode]));
+    }
+
     /** Line the icons up again, forgetting where they were moved. */
     arrange() {
         this._action('arrange');

@@ -79,6 +79,38 @@ class FolderDocklet extends Applet {
         return Gio.File.new_for_path(this.settings.path);
     }
 
+    get acceptsFiles() {
+        return !this._missing;
+    }
+
+    /**
+     * Files dropped on the tile go into the folder, as in Files: Ctrl
+     * copies, Shift moves, and otherwise they move if they're on the
+     * folder's disk and are copied if not.
+     */
+    dropFiles(uris) {
+        const folder = this._file;
+        const files = uris.map(uri => Gio.File.new_for_uri(uri))
+            .filter(f => !folder.equal(f.get_parent()) && !folder.equal(f));
+        if (files.length === 0)
+            return;
+        const [, , mods] = global.get_pointer();
+        let copy;
+        if (mods & Clutter.ModifierType.CONTROL_MASK)
+            copy = true;
+        else if (mods & Clutter.ModifierType.SHIFT_MASK)
+            copy = false;
+        else
+            copy = !files.every(f => sameFilesystem(f, folder));
+
+        Gio.DBus.session.call(
+            'org.gnome.Nautilus', '/org/gnome/Nautilus/FileOperations2',
+            'org.gnome.Nautilus.FileOperations2', copy ? 'CopyURIs' : 'MoveURIs',
+            new GLib.Variant('(assa{sv})', [files.map(f => f.get_uri()), folder.get_uri(), {}]),
+            null, Gio.DBusCallFlags.NONE, -1, null)
+            .catch(e => Main.notifyError(_('Failed to put the files in the folder'), e.message));
+    }
+
     activate(button) {
         if (this.settings.click === 'fan' && button !== Clutter.BUTTON_MIDDLE &&
             !this._missing)
@@ -171,3 +203,17 @@ class FolderDocklet extends Applet {
             });
     }
 });
+
+/** Whether `file` is on the same disk as `folder`, so dropping it there moves it. */
+function sameFilesystem(file, folder) {
+    const filesystem = f => {
+        try {
+            return f.query_info('id::filesystem', Gio.FileQueryInfoFlags.NONE, null)
+                .get_attribute_string('id::filesystem');
+        } catch {
+            return null;
+        }
+    };
+    const id = filesystem(folder);
+    return !!id && filesystem(file) === id;
+}

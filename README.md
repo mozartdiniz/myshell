@@ -52,9 +52,10 @@ the login screen and can always go back.
   left to other programs. It works like a file manager's desktop: a file
   saved there shows up at once; click, Ctrl/Shift+click or drag a
   rectangle to select, double-click or Enter to open. Drag icons to
-  another spot, into a folder, onto a launcher, an app's tile or the
-  Trash, or out to any app; drag files in from any app (Ctrl copies,
-  Shift moves). Right-click an icon for Open With, Cut, Copy, Rename,
+  another spot, into a folder, onto a launcher, a Folder applet (into
+  its folder), an app's tile or the Trash, or out to any app; drag files
+  in from any app, or out of a Folder applet's fan (Ctrl copies, Shift
+  moves). Right-click an icon for Open With, Cut, Copy, Rename,
   Move to Trash and Properties; Ctrl+C/X/V, Delete, F2, Ctrl+Shift+N
   and Ctrl+Z work as in Files, which does the copying with its progress,
   questions and undo. The root menu's Desktop submenu hides the icons,

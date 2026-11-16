@@ -709,20 +709,27 @@ class DesktopGrid extends Gtk.Widget {
     }
 
     _dropAction(target, icon) {
+        const state = target.get_current_event_state();
+        return this._actionFor(target.get_value()?.get_files?.() ?? [], icon, {
+            copy: (state & Gdk.ModifierType.CONTROL_MASK) !== 0,
+            move: (state & Gdk.ModifierType.SHIFT_MASK) !== 0,
+        });
+    }
+
+    /**
+     * What dropping `files` on `icon`, or the empty desktop, does: Ctrl
+     * copies and Shift moves; otherwise our own icons move about, and
+     * files from elsewhere move if they're on the same disk, as in Files.
+     *
+     * @returns {Gdk.DragAction} COPY, MOVE, or 0 for nothing
+     */
+    _actionFor(files, icon, {copy = false, move = false} = {}) {
         if (!this._folder)
             return 0;
-        if (icon?.entry.launcher)
+        if (icon?.entry.launcher || copy)
             return Gdk.DragAction.COPY;
-        const state = target.get_current_event_state();
-        if (state & Gdk.ModifierType.CONTROL_MASK)
-            return Gdk.DragAction.COPY;
-        if (state & Gdk.ModifierType.SHIFT_MASK)
+        if (move || this._drag)
             return Gdk.DragAction.MOVE;
-        // Our own icons move about; files from elsewhere move if they're
-        // on the same disk, as in Files
-        if (this._drag)
-            return Gdk.DragAction.MOVE;
-        const files = target.get_value()?.get_files?.() ?? [];
         const folder = icon?.entry.file ?? this._folder;
         const filesystem = icon ? icon.entry.filesystem : this._folderFilesystem;
         if (files.length && files.every(f => Files.sameFilesystem(f, folder, filesystem)))
@@ -750,6 +757,28 @@ class DesktopGrid extends Gtk.Widget {
         const files = this._drag
             ? this._drag.icons.map(i => i.entry.file)
             : value?.get_files() ?? [];
+        return this._dropFiles(files, icon, action, x, y);
+    }
+
+    /**
+     * Files dragged from the shell, such as from a Folder applet's fan,
+     * and dropped at x, y.
+     *
+     * @param {Gio.File[]} files
+     * @param {number} x
+     * @param {number} y
+     * @param {string} mode - 'copy', 'move', or 'default' for what a
+     *   plain drag does
+     */
+    dropFiles(files, x, y, mode) {
+        const icon = this._dropIconAt(x, y);
+        const action = this._actionFor(files, icon,
+            {copy: mode === 'copy', move: mode === 'move'});
+        this._dropFiles(files, icon, action, x, y);
+    }
+
+    /** Do `action` with `files` dropped at x, y, on `icon` if there's one. */
+    _dropFiles(files, icon, action, x, y) {
         if (!action || files.length === 0)
             return false;
 
