@@ -48,6 +48,19 @@ the login screen and can always go back.
   last, and you can add instructions for the model, such as “keep the
   tone”, “make it polite” or “fix only the spelling”. Ctrl+Enter
   translates.
+- **Desktop icons** for the files in your Desktop folder, which WindowMaker
+  left to other programs. It works like a file manager's desktop: a file
+  saved there shows up at once; click, Ctrl/Shift+click or drag a
+  rectangle to select, double-click or Enter to open. Drag icons to
+  another spot, into a folder, onto a launcher, an app's tile or the
+  Trash, or out to any app; drag files in from any app (Ctrl copies,
+  Shift moves). Right-click an icon for Open With, Cut, Copy, Rename,
+  Move to Trash and Properties; Ctrl+C/X/V, Delete, F2, Ctrl+Shift+N
+  and Ctrl+Z work as in Files, which does the copying with its progress,
+  questions and undo. The root menu's Desktop submenu hides the icons,
+  lines them up again, pastes and makes new folders. The icons are a
+  small app of their own (`js/desktop/`) that the shell keeps under
+  every window.
 - **Launcher** with search on Super (all apps with Super+A), and a
   WindowMaker **root menu** on a right-click on the desktop. A middle-click
   on the desktop, or Super+F11, lists every window.
@@ -90,7 +103,8 @@ If Tessera doesn't start, log in with GNOME instead and look at its log:
 ## Settings
 
 Everything lives in `~/.config/tessera`: the tile layout (`tiles.json`),
-the applets and their settings (`applets.json`), pinned app tiles
+the applets and their settings (`applets.json`), the desktop icons
+(`desktop.json`, and where they are in `desktop-icons.json`), pinned app tiles
 (`app-tiles.json`), the Clip (`clip.json`), the number of workspaces
 (`workspaces.json`), their wallpapers (`wallpapers.json`), the workspace
 sets (`sets.json`) and the Translator's languages and instructions

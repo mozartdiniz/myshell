@@ -4,6 +4,7 @@ import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
+import * as Main from '../../main.js';
 import {Applet} from '../applet.js';
 
 const TRASH_URI = 'trash:///';
@@ -55,6 +56,24 @@ class TrashDocklet extends Applet {
 
     get defaults() {
         return {count: true};
+    }
+
+    get acceptsFiles() {
+        return true;
+    }
+
+    /** Files dropped on the Trash go to it. */
+    dropFiles(uris) {
+        for (const uri of uris) {
+            Gio.File.new_for_uri(uri).trash_async(GLib.PRIORITY_DEFAULT, null, (file, res) => {
+                try {
+                    file.trash_finish(res);
+                } catch (e) {
+                    Main.notifyError(_('Failed to move “%s” to the Trash')
+                        .format(file.get_basename()), e.message);
+                }
+            });
+        }
     }
 
     buildMenu(menu) {

@@ -87,6 +87,7 @@
     <file>ui/dock/applet.js</file>
     <file>ui/dock/applets.js</file>
     <file>ui/dock/clip.js</file>
+    <file>ui/dock/desktopIcons.js</file>
     <file>ui/dock/expose.js</file>
     <file>ui/dock/fixedWorkspaces.js</file>
     <file>ui/dock/nameDialog.js</file>

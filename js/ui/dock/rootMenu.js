@@ -634,6 +634,7 @@ export class RootMenu {
                 {label: _('Workspaces'), submenu: () => this._workspacesDef()},
                 {label: _('Workspace'), submenu: () => this._workspaceDef()},
                 {label: _('Applets'), submenu: () => this._appletsDef()},
+                {label: _('Desktop'), submenu: () => this._desktopDef()},
                 {
                     label: _('Display Settings'),
                     sensitive: Main.sessionMode.allowSettings,
@@ -718,6 +719,44 @@ export class RootMenu {
                 }
                 items.push({label: _('Sets'), submenu: () => this._setsDef()});
                 return items;
+            },
+        };
+    }
+
+    /** The icons of the files in the Desktop folder. */
+    _desktopDef() {
+        return {
+            title: _('Desktop'),
+            items: () => {
+                const icons = Main.desktopIcons;
+                const [x, y] = this._pressPoint;
+                return [
+                    {
+                        label: _('Show Icons'),
+                        ornament: icons.shown,
+                        activate: () => (icons.shown = !icons.shown),
+                    },
+                    {
+                        label: _('Arrange Icons'),
+                        sensitive: icons.shown,
+                        activate: () => icons.arrange(),
+                    },
+                    {
+                        label: _('Paste'),
+                        sensitive: icons.shown && !!icons.folder,
+                        activate: () => icons.paste(x, y),
+                    },
+                    {
+                        label: _('New Folder…'),
+                        sensitive: icons.shown && !!icons.folder,
+                        activate: () => icons.newFolder(x, y),
+                    },
+                    {
+                        label: _('Open Desktop Folder'),
+                        sensitive: !!icons.folder,
+                        activate: () => icons.openFolder(),
+                    },
+                ];
             },
         };
     }

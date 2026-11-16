@@ -26,6 +26,7 @@ import * as Overview from './overview.js';
 import * as Dock from './dock/dockManager.js';
 import * as FixedWorkspaces from './dock/fixedWorkspaces.js';
 import * as Launcher from './dock/launcher.js';
+import * as DesktopIcons from './dock/desktopIcons.js';
 import * as RootMenu from './dock/rootMenu.js';
 import * as WorkspaceBackgrounds from './dock/workspaceBackgrounds.js';
 import * as WorkspaceName from './dock/workspaceName.js';
@@ -68,6 +69,7 @@ export let extensionManager = null;
 export let panel = null;
 export let dock = null;
 export let rootMenu = null;
+export let desktopIcons = null;
 export let launcher = null;
 export let overview = null;
 export let fixedWorkspaces = null;
@@ -311,6 +313,7 @@ async function _initializeUI() {
     dock = new Dock.DockManager();
     launcher = new Launcher.Launcher();
     rootMenu = new RootMenu.RootMenu();
+    desktopIcons = new DesktopIcons.DesktopIcons();
     global.display.connectObject('overlay-key', () => {
         if (sessionMode.isLocked || sessionMode.isGreeter)
             return;
