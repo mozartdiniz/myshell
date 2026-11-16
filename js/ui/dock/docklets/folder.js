@@ -36,7 +36,7 @@ class FolderDocklet extends Applet {
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
         });
-        this._icon = new St.Icon({
+        this._icon = this.makeIcon({
             icon_size: 36,
             x_align: Clutter.ActorAlign.CENTER,
         });
@@ -162,7 +162,7 @@ class FolderDocklet extends Applet {
                         return;
                     this._missing = true;
                 }
-                this._icon.gicon = icon;
+                this.setDefaultIcon(icon);
                 this._icon.opacity = this._missing ? 128 : 255;
                 this._name.text = isHome ? _('Home') : name;
                 this.accessible_name = this._name.text;

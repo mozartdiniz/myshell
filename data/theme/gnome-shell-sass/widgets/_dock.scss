@@ -562,6 +562,58 @@ $dock_bevel_dark: #151515;
   &:checked { color: $accent_color; }
 }
 
+/* Calculator applet */
+.calculator-applet {
+  width: 340px;
+  spacing: $base_padding;
+  // Its menu item isn't activatable, which would dim it
+  color: $fg_color;
+}
+.calculator-applet-entry {
+  font-feature-settings: "tnum";
+  &:error { border-color: $error_color; }
+}
+.calculator-applet-result {
+  font-size: 16pt;
+  font-weight: bold;
+  font-feature-settings: "tnum";
+  padding: 0 $base_padding * 1.5;
+  min-height: 1.3em;
+  &.error {
+    font-size: 10pt;
+    font-weight: normal;
+    color: $error_color;
+  }
+}
+.calculator-applet-history {
+  spacing: 2px;
+  padding-top: $base_padding;
+  border-top: 1px solid transparentize($fg_color, 0.9);
+}
+.calculator-applet-row { spacing: 2px; }
+.calculator-applet-restore {
+  padding: $base_padding $base_padding * 1.5;
+  border-radius: $base_border_radius;
+  &:hover { background-color: transparentize($fg_color, 0.9); }
+  &:focus { background-color: transparentize($fg_color, 0.85); }
+  &:active { background-color: transparentize($fg_color, 0.8); }
+}
+.calculator-applet-expression {
+  color: transparentize($fg_color, 0.3);
+  padding-right: $base_padding * 2;
+}
+.calculator-applet-row-result {
+  font-weight: bold;
+  font-feature-settings: "tnum";
+}
+.calculator-applet-copy {
+  padding: $base_padding;
+  border-radius: 99px;
+  & StIcon { icon-size: 14px; }
+  &:hover { background-color: transparentize($fg_color, 0.85); }
+  &:active { background-color: transparentize($fg_color, 0.75); }
+}
+
 /* The workspace's name, shown when switching */
 .workspace-name {
   font-size: 28pt;

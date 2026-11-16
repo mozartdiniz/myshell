@@ -1,5 +1,6 @@
 import {AgentDocklet} from './docklets/agent.js';
 import {BatteryDocklet} from './docklets/battery.js';
+import {CalculatorDocklet} from './docklets/calculator.js';
 import {CaffeineDocklet} from './docklets/caffeine.js';
 import {ClaudeDocklet} from './docklets/claude.js';
 import {ClipDocklet} from './docklets/clip.js';
@@ -113,6 +114,13 @@ export const APPLETS = [
         description: _('Translates what you copied with the lab’s local model'),
         icon: 'accessories-dictionary-symbolic',
         type: TranslatorDocklet,
+    },
+    {
+        id: 'calculator',
+        name: _('Calculator'),
+        description: _('Type or paste a sum like 3 * (4+8) * 0.5 and press Enter'),
+        icon: 'accessories-calculator-symbolic',
+        type: CalculatorDocklet,
     },
     {
         id: 'color-picker',

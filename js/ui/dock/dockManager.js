@@ -843,6 +843,7 @@ export class DockManager extends Signals.EventEmitter {
             console.error(`Failed to create applet ${id}: ${e.message}`);
             return;
         }
+        tile.appletName = info.name;
         tile.connect('settings-changed', () => {
             this._appletSettings[id] = {...tile.settings};
             this._queueSave();

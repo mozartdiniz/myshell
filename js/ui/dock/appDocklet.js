@@ -10,7 +10,7 @@ import * as AppFavorites from '../appFavorites.js';
 import * as Main from '../main.js';
 import * as PopupMenu from '../popupMenu.js';
 import {AppMenu} from '../appMenu.js';
-import {AppTileDialog} from './appTileDialog.js';
+import {AppTileDialog, iconFromString} from './appTileDialog.js';
 import {Docklet} from './docklet.js';
 
 const ICON_SIZE = 48;
@@ -234,18 +234,6 @@ export function launchApp(app, settings, uris = []) {
     } catch (e) {
         Main.notifyError(_('Failed to launch “%s”').format(app.get_name()), e.message);
     }
-}
-
-/**
- * @param {string} icon - icon name, or path or URI of an image
- * @returns {Gio.Icon}
- */
-function iconFromString(icon) {
-    if (icon.startsWith('/'))
-        return new Gio.FileIcon({file: Gio.File.new_for_path(icon)});
-    if (icon.includes('://'))
-        return new Gio.FileIcon({file: Gio.File.new_for_uri(icon)});
-    return new Gio.ThemedIcon({name: icon});
 }
 
 /**

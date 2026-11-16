@@ -16,7 +16,7 @@ class SystemDocklet extends Applet {
     _init(appletId, settings) {
         super._init(appletId, settings, {style_class: 'system-docklet'});
 
-        this.set_child(new St.Icon({
+        this.set_child(this.makeIcon({
             style_class: 'applet-icon',
             icon_name: 'open-menu-symbolic',
             icon_size: 32,

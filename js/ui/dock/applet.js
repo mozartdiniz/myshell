@@ -1,10 +1,12 @@
 import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
 import GObject from 'gi://GObject';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import * as Main from '../main.js';
 import * as PopupMenu from '../popupMenu.js';
+import {AppletIconDialog, iconFromString} from './appTileDialog.js';
 import {Docklet} from './docklet.js';
 
 const TOOLTIP_GAP = 6;
@@ -15,7 +17,8 @@ const TOOLTIP_FADE_TIME = 100;
  * page. Each applet has a settings object that DockManager persists;
  * right-click or Ctrl+click opens a menu with the applet's settings
  * (from `buildMenu()`), the Clip's items for it and a Remove item.
- * Plain clicks go to `activate()`.
+ * Plain clicks go to `activate()`. Applets whose tile is a plain icon
+ * make it with `makeIcon()`, so the menu can change it.
  */
 export const Applet = GObject.registerClass({
     Signals: {
@@ -36,6 +39,11 @@ export const Applet = GObject.registerClass({
         });
         this._appletId = appletId;
         this.settings = {...this.defaults, ...settings};
+        /** The applet's name, for dialog titles; set by DockManager */
+        this.appletName = '';
+
+        this._iconActor = null;
+        this._defaultIcon = null;
 
         this._menuManager = new PopupMenu.PopupMenuManager(this);
         this._menu = null;
@@ -100,8 +108,51 @@ export const Applet = GObject.registerClass({
         if (this.settings[key] === value)
             return;
         this.settings[key] = value;
+        if (key === 'icon')
+            this._syncIcon();
         this.settingsChanged(key);
         this.emit('settings-changed');
+    }
+
+    /**
+     * Make the tile's icon, which the menu's Change Icon… item can swap
+     * for an icon name or image of the user's, kept in the `icon`
+     * setting. Not for icons that show what the applet is doing.
+     *
+     * @param {object} params - St.Icon params; `icon_name` or `gicon`
+     *   is the applet's own icon
+     * @returns {St.Icon}
+     */
+    makeIcon(params) {
+        const {icon_name: iconName, gicon, ...iconParams} = params;
+        this._iconActor = new St.Icon(iconParams);
+        this._defaultIcon = gicon ??
+            (iconName ? new Gio.ThemedIcon({name: iconName}) : null);
+        this._syncIcon();
+        return this._iconActor;
+    }
+
+    /**
+     * Change the applet's own icon; a custom one still wins.
+     *
+     * @param {Gio.Icon|null} gicon
+     */
+    setDefaultIcon(gicon) {
+        this._defaultIcon = gicon;
+        this._syncIcon();
+    }
+
+    _syncIcon() {
+        if (!this._iconActor)
+            return;
+        const {icon} = this.settings;
+        this._iconActor.gicon = typeof icon === 'string' && icon
+            ? iconFromString(icon) : this._defaultIcon;
+    }
+
+    _changeIcon() {
+        new AppletIconDialog(this.appletName, this.settings.icon ?? '',
+            this._defaultIcon, icon => this.setSetting('icon', icon)).open();
     }
 
     /** Radio group: a titled separator followed by one item per choice. */
@@ -199,6 +250,8 @@ export const Applet = GObject.registerClass({
             Main.dock.clip.addTileItems(menu, this);
             if (!menu.isEmpty())
                 menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+            if (this._iconActor)
+                menu.addAction(_('Change Icon…'), () => this._changeIcon());
             menu.addAction(_('Remove'), () => this.emit('remove-requested'));
         });
     }
